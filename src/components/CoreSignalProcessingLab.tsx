@@ -161,6 +161,11 @@ const processingRoles: Record<SignalMode, ProcessingRole> = {
 };
 
 const sampleRate = 16000;
+const stftInputComponents = [
+  { amplitude: 0.62, cycles: 2.2, phase: 0 },
+  { amplitude: 0.28, cycles: 7.4, phase: 0.55 },
+  { amplitude: 0.16, cycles: 17.6, phase: 1.15 }
+] as const;
 const filterWaveComponents = [
   { amplitude: 0.72, cycles: 2.2, frequency: 300, phase: 0 },
   { amplitude: 0.34, cycles: 7.5, frequency: 1600, phase: 0.45 },
@@ -211,13 +216,19 @@ function createFrameEnvelopePath(windowSize: number, originX = 84, originY = 158
   return points.join(" ");
 }
 
+function createStftInputValue(ratio: number) {
+  return stftInputComponents.reduce(
+    (sum, component) =>
+      sum + Math.sin(ratio * Math.PI * component.cycles + component.phase) * component.amplitude,
+    0
+  );
+}
+
 function createPcmSamples(originX = 44, originY = 226, width = 152, amplitude = 40) {
-  return Array.from({ length: 15 }, (_, index) => {
-    const ratio = index / 14;
+  return Array.from({ length: 25 }, (_, index) => {
+    const ratio = index / 24;
     const x = originX + ratio * width;
-    const value =
-      Math.sin(ratio * Math.PI * 2.15) * 0.72 +
-      Math.sin(ratio * Math.PI * 6.1 + 0.7) * 0.22;
+    const value = createStftInputValue(ratio);
     const y = originY - value * amplitude;
 
     return { x, y };
@@ -239,6 +250,15 @@ function createSpectrumBars(windowSize: number) {
 
     return { height };
   });
+}
+
+function createFeatureVectorBars(windowSize: number) {
+  const windowFactor = Math.min(1, Math.max(0, (windowSize - 256) / 768));
+  const baseValues = [0.72, 0.92, 0.66, 0.48, 0.58, 0.76, 0.42, 0.34, 0.28];
+
+  return baseValues.map((value, index) => ({
+    height: 10 + value * 38 + Math.sin(index * 1.4 + windowFactor * 2.2) * 5
+  }));
 }
 
 function getStftGridShape(windowSize: number, hopSize: number) {
@@ -625,6 +645,7 @@ function StftChart({
   const pcmSamples = createPcmSamples();
   const framePath = createFrameEnvelopePath(windowSize, 226, 228, 150, 32);
   const bars = createSpectrumBars(windowSize);
+  const featureBars = createFeatureVectorBars(windowSize);
   const hopOffset = Math.max(18, Math.min(74, (hopSize / 512) * 74));
   const windowBlockWidth = Math.max(56, Math.min(118, (windowSize / 1024) * 118));
   const spectrogramCells = createSpectrogramCells(windowSize, hopSize);
@@ -680,6 +701,9 @@ function StftChart({
           <circle className="core-sample-dot" cx={sample.x} cy={sample.y} data-testid="stft-pcm-sample" r="3.6" />
         </g>
       ))}
+      <text className="core-diagram-caption small" x="118" y="154">
+        {language === "zh" ? "低/中/高频成分叠加" : "Low/mid/high components mixed"}
+      </text>
       <text className="core-diagram-caption small" x="118" y="286">{language === "zh" ? "离散采样点" : "Discrete samples"}</text>
       <text className="core-diagram-caption" x="90" y="318">{steps[0].label[language]}</text>
       <rect
@@ -733,10 +757,13 @@ function StftChart({
       <text className="core-diagram-caption small" x="642" y="324">
         {language === "zh" ? `图中示意：${bars.length} 个频率格` : `Diagram: ${bars.length} bins shown`}
       </text>
+      <text className="core-diagram-caption small" x="642" y="350">
+        {language === "zh" ? "峰值来自同一段 PCM 的频率成分" : "Peaks come from the same PCM segment"}
+      </text>
       <text className="core-diagram-caption small" x="642" y="154">
         {language === "zh" ? "hop 不改变单帧频谱" : "Hop does not change one-frame spectrum"}
       </text>
-      <text className="core-diagram-caption" x="644" y="338">{steps[3].label[language]}</text>
+      <text className="core-diagram-caption" x="644" y="366">{steps[3].label[language]}</text>
 
       <text className="core-diagram-caption" x={heatmapX + heatmapWidth / 2} y="376">
         {language === "zh" ? "STFT 频谱图" : "STFT spectrogram"}
@@ -814,6 +841,27 @@ function StftChart({
         <text className="interface-tdm-note" x="656" y="498">{language === "zh" ? "中等能量" : "Mid energy"}</text>
         <rect fill={energyColor(0.12)} height="16" rx="3" width="26" x="622" y="516" />
         <text className="interface-tdm-note" x="656" y="528">{language === "zh" ? "暗 = 能量低" : "Dark = low energy"}</text>
+      </g>
+      <g className="core-feature-vector" aria-label={language === "zh" ? "频谱特征向量示意" : "Spectrum feature vector"}>
+        <text className="core-axis-label" x="620" y="568">{language === "zh" ? "特征向量" : "Feature vector"}</text>
+        {featureBars.map((bar, index) => (
+          <rect
+            className="core-feature-bar"
+            data-testid="stft-feature-bar"
+            height={bar.height}
+            key={`feature-${index}`}
+            rx="3"
+            width="8"
+            x={622 + index * 11}
+            y={626 - bar.height}
+          />
+        ))}
+        <text className="interface-tdm-note" x="622" y="646">
+          {language === "zh" ? "Mel / MFCC / embedding" : "Mel / MFCC / embedding"}
+        </text>
+        <text className="interface-tdm-note" x="622" y="664">
+          {language === "zh" ? "由频谱压缩或重排得到" : "Compressed or remapped from spectra"}
+        </text>
       </g>
     </svg>
   );
@@ -904,6 +952,11 @@ function StftKeyConcepts({ language }: { language: Language }) {
             {language === "zh"
               ? "它不是新的音频信号，而是把原始波形拆成“什么时候有什么频率、强度有多大”的可视化。"
               : "It is not a new audio signal; it visualizes the original waveform as what frequencies exist at what times and how strong they are."}
+          </p>
+          <p>
+            {language === "zh"
+              ? "后续算法常会把频谱进一步压缩、重排或学习成特征向量，例如 Mel 能量、MFCC 或 embedding；这些特征更适合识别、分类、增强或编码模型使用。"
+              : "Later algorithms often compress, remap, or learn spectra into feature vectors such as Mel energy, MFCCs, or embeddings for recognition, classification, enhancement, or coding models."}
           </p>
         </article>
       </div>

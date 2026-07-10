@@ -592,6 +592,10 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getAllByText("VQE / 3A").length).toBeGreaterThan(0);
     expect(within(lab).getByText(/语音增强模块，常包含波束成形、AEC、NS\/ANR、去混响和 AGC/)).toBeInTheDocument();
     const moduleTabs = within(lab).getByRole("group", { name: "语音增强模块" });
+    const flowArea = lab.querySelector(".speech-enhancement-flow-area");
+    expect(flowArea).not.toBeNull();
+    expect(within(flowArea as HTMLElement).getByRole("group", { name: "语音增强模块" })).toBe(moduleTabs);
+    expect((flowDiagram.compareDocumentPosition(moduleTabs) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(true);
     expect(within(moduleTabs).getAllByRole("button").map((button) => button.textContent)).toEqual([
       "多麦波束成形",
       "AEC 回声消除",
@@ -603,7 +607,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText(/多麦阵列要求至少两路同步麦克风/)).toBeInTheDocument();
     expect(within(lab).getAllByText(/DOA 声源定位/).length).toBeGreaterThan(0);
     expect(within(lab).getAllByText(/定向拾音/).length).toBeGreaterThan(0);
-    expect(within(lab).getByText(/当前模块强度只影响正在查看的算法/)).toBeInTheDocument();
+    expect(within(lab).getByText(/当前模块强度：只保存到选中的算法/)).toBeInTheDocument();
     const visualArea = lab.querySelector(".speech-enhancement-visuals");
     const controlPanel = lab.querySelector(".speech-enhancement-panel");
     expect(visualArea).not.toBeNull();
@@ -618,20 +622,30 @@ describe("Audio knowledge app", () => {
         0
     ).toBe(true);
     expect(within(visualArea as HTMLElement).getByRole("region", { name: "当前算法基本原理" })).toBeInTheDocument();
-    expect(within(visualArea as HTMLElement).getByRole("region", { name: "核心算法数学形式" })).toBeInTheDocument();
     expect(within(controlPanel as HTMLElement).queryByRole("region", { name: "当前算法基本原理" })).not.toBeInTheDocument();
-    expect(within(controlPanel as HTMLElement).queryByRole("region", { name: "核心算法数学形式" })).not.toBeInTheDocument();
-    expect(within(lab).getByText(/噪声强度：增加原始波形上的高频细碎抖动/)).toBeInTheDocument();
-    expect(within(lab).getByText(/回声强度：增加与语音相似但延迟后的波峰和尾巴/)).toBeInTheDocument();
-    expect(within(lab).getByText(/混响拖尾：增加持续衰减的房间反射/)).toBeInTheDocument();
-    expect(within(lab).getByText(/x\(n\) 为播放参考，d_hat\(n\)/)).toBeInTheDocument();
-    expect(within(lab).getByText(/S_hat\(k\) = G\(k\)X\(k\)/)).toBeInTheDocument();
-    expect(within(lab).getByText(/g\(n\) = target \/ rms\(n\)/)).toBeInTheDocument();
+    expect(within(lab).queryByRole("region", { name: "核心算法数学形式" })).not.toBeInTheDocument();
+    expect(within(lab).queryByRole("region", { name: "滑块和波形关系说明" })).not.toBeInTheDocument();
+    expect(within(lab).getByText(/演示输入固定包含噪声、回声和混响/)).toBeInTheDocument();
+    expect(within(lab).getByText(/前级算法强度会传递到后级波形/)).toBeInTheDocument();
+    expect(within(lab).queryByRole("slider", { name: "噪声强度" })).not.toBeInTheDocument();
+    expect(within(lab).queryByRole("slider", { name: "回声强度" })).not.toBeInTheDocument();
+    expect(within(lab).queryByRole("slider", { name: "混响拖尾" })).not.toBeInTheDocument();
     expect(within(lab).getByRole("img", { name: "语音增强算法链路波形变化图" })).toBeInTheDocument();
     expect(within(lab).getByTestId("speech-stage-raw")).toBeInTheDocument();
     expect(within(lab).getByTestId("speech-stage-aec")).toBeInTheDocument();
     expect(within(lab).getByTestId("speech-stage-ns")).toBeInTheDocument();
+    expect(within(lab).getByTestId("speech-stage-dereverb")).toBeInTheDocument();
     expect(within(lab).getByTestId("speech-stage-agc")).toBeInTheDocument();
+    expect(within(lab).getByText(/累计示意：AEC 压低延迟回声/)).toBeInTheDocument();
+    const stageRaw = within(lab).getByTestId("speech-stage-raw").getAttribute("d");
+    const stageAec = within(lab).getByTestId("speech-stage-aec").getAttribute("d");
+    const stageNs = within(lab).getByTestId("speech-stage-ns").getAttribute("d");
+    const stageDereverb = within(lab).getByTestId("speech-stage-dereverb").getAttribute("d");
+    const stageAgc = within(lab).getByTestId("speech-stage-agc").getAttribute("d");
+    expect(stageAec).not.toEqual(stageRaw);
+    expect(stageNs).not.toEqual(stageAec);
+    expect(stageDereverb).not.toEqual(stageNs);
+    expect(stageAgc).not.toEqual(stageDereverb);
     expect(within(lab).getByRole("region", { name: "算法源码参考" })).toBeInTheDocument();
     expect(within(lab).getByText(/AEC 源码关键词：NLMS adaptive filter/)).toBeInTheDocument();
     expect(within(lab).getByText(/NS \/ ANR 源码关键词：STFT spectral subtraction/)).toBeInTheDocument();
@@ -649,13 +663,81 @@ describe("Audio knowledge app", () => {
     const enhancedWave = within(lab).getByTestId("speech-enhanced-wave").getAttribute("d");
     expect(rawWave).not.toEqual(enhancedWave);
 
+    const getStagePath = (id: string) => within(lab).getByTestId(`speech-stage-${id}`).getAttribute("d");
+    const stageBeforeNs = {
+      raw: getStagePath("raw"),
+      aec: getStagePath("aec"),
+      ns: getStagePath("ns"),
+      dereverb: getStagePath("dereverb"),
+      agc: getStagePath("agc")
+    };
     await user.click(screen.getByRole("button", { name: "NS / ANR 降噪" }));
     expect(screen.getByText(/NS\/ANR 估计背景噪声频谱/)).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("slider", { name: "噪声强度" }), {
+    fireEvent.change(screen.getByRole("slider", { name: "处理强度" }), {
+      target: { value: "100" }
+    });
+    expect(screen.getByText("当前模块强度：100%")).toBeInTheDocument();
+    expect(getStagePath("raw")).toEqual(stageBeforeNs.raw);
+    expect(getStagePath("aec")).toEqual(stageBeforeNs.aec);
+    expect(getStagePath("ns")).not.toEqual(stageBeforeNs.ns);
+    expect(getStagePath("dereverb")).not.toEqual(stageBeforeNs.dereverb);
+    expect(getStagePath("agc")).not.toEqual(stageBeforeNs.agc);
+
+    const stageBeforeAec = {
+      raw: getStagePath("raw"),
+      aec: getStagePath("aec"),
+      ns: getStagePath("ns"),
+      dereverb: getStagePath("dereverb"),
+      agc: getStagePath("agc")
+    };
+    await user.click(screen.getByRole("button", { name: "AEC 回声消除" }));
+    fireEvent.change(screen.getByRole("slider", { name: "处理强度" }), {
+      target: { value: "30" }
+    });
+    expect(screen.getByText("当前模块强度：30%")).toBeInTheDocument();
+    expect(getStagePath("raw")).toEqual(stageBeforeAec.raw);
+    expect(getStagePath("aec")).not.toEqual(stageBeforeAec.aec);
+    expect(getStagePath("ns")).not.toEqual(stageBeforeAec.ns);
+    expect(getStagePath("dereverb")).not.toEqual(stageBeforeAec.dereverb);
+    expect(getStagePath("agc")).not.toEqual(stageBeforeAec.agc);
+
+    const stageBeforeDereverb = {
+      raw: getStagePath("raw"),
+      aec: getStagePath("aec"),
+      ns: getStagePath("ns"),
+      dereverb: getStagePath("dereverb"),
+      agc: getStagePath("agc")
+    };
+    await user.click(screen.getByRole("button", { name: "去混响" }));
+    fireEvent.change(screen.getByRole("slider", { name: "处理强度" }), {
       target: { value: "80" }
     });
-    expect(screen.getByText("噪声强度：80%")).toBeInTheDocument();
-    expect(within(lab).getByTestId("speech-raw-wave").getAttribute("d")).not.toEqual(rawWave);
+    expect(screen.getByText("当前模块强度：80%")).toBeInTheDocument();
+    expect(getStagePath("raw")).toEqual(stageBeforeDereverb.raw);
+    expect(getStagePath("aec")).toEqual(stageBeforeDereverb.aec);
+    expect(getStagePath("ns")).toEqual(stageBeforeDereverb.ns);
+    expect(getStagePath("dereverb")).not.toEqual(stageBeforeDereverb.dereverb);
+    expect(getStagePath("agc")).not.toEqual(stageBeforeDereverb.agc);
+
+    await user.click(screen.getByRole("button", { name: "AGC 自动增益" }));
+    const stageBeforeAgc = {
+      raw: getStagePath("raw"),
+      aec: getStagePath("aec"),
+      ns: getStagePath("ns"),
+      dereverb: getStagePath("dereverb"),
+      agc: getStagePath("agc")
+    };
+    const agcEnhancedWave = within(lab).getByTestId("speech-enhanced-wave").getAttribute("d");
+    fireEvent.change(screen.getByRole("slider", { name: "处理强度" }), {
+      target: { value: "20" }
+    });
+    expect(screen.getByText("当前模块强度：20%")).toBeInTheDocument();
+    expect(getStagePath("raw")).toEqual(stageBeforeAgc.raw);
+    expect(getStagePath("aec")).toEqual(stageBeforeAgc.aec);
+    expect(getStagePath("ns")).toEqual(stageBeforeAgc.ns);
+    expect(getStagePath("dereverb")).toEqual(stageBeforeAgc.dereverb);
+    expect(getStagePath("agc")).not.toEqual(stageBeforeAgc.agc);
+    expect(within(lab).getByTestId("speech-enhanced-wave").getAttribute("d")).not.toEqual(agcEnhancedWave);
     await user.click(screen.getByRole("button", { name: "4 Mic" }));
     expect(within(flowDiagram).getAllByText("4 Mic 阵列").length).toBeGreaterThan(0);
     expect(screen.getByText(/算法延迟：约/)).toBeInTheDocument();
@@ -720,9 +802,14 @@ describe("Audio knowledge app", () => {
     expect(within(stftChart).getByTestId("stft-energy-plot")).toBeInTheDocument();
     expect(within(stftChart).getByText("高频")).toBeInTheDocument();
     expect(within(stftChart).getByText("低频")).toBeInTheDocument();
-    expect(within(stftChart).getAllByTestId("stft-pcm-sample")).toHaveLength(15);
+    expect(within(stftChart).getAllByTestId("stft-pcm-sample")).toHaveLength(25);
+    expect(within(stftChart).getByText("低/中/高频成分叠加")).toBeInTheDocument();
     expect(within(stftChart).getByText("离散采样点")).toBeInTheDocument();
     expect(within(stftChart).getByText("图中示意：14 个频率格")).toBeInTheDocument();
+    expect(within(stftChart).getByText("峰值来自同一段 PCM 的频率成分")).toBeInTheDocument();
+    expect(within(stftChart).getAllByTestId("stft-feature-bar")).toHaveLength(9);
+    expect(within(stftChart).getByText("Mel / MFCC / embedding")).toBeInTheDocument();
+    expect(within(stftChart).getByText("由频谱压缩或重排得到")).toBeInTheDocument();
     expect(within(stftChart).getByText("hop 不改变单帧频谱")).toBeInTheDocument();
     expect(within(stftChart).getByText("hop 256 点 = 16.0 ms/帧；只改变横向时间帧")).toBeInTheDocument();
     expect(within(stftChart).getByText("图中示意：27 个时间帧；11 个频率格")).toBeInTheDocument();
@@ -751,6 +838,7 @@ describe("Audio knowledge app", () => {
     expect(within(stftKeyConcepts).getByText(/采样率决定最高可分析频率/)).toBeInTheDocument();
     expect(within(stftKeyConcepts).getByRole("heading", { name: "能量高低表示什么" })).toBeInTheDocument();
     expect(within(stftKeyConcepts).getByText(/颜色越亮/)).toBeInTheDocument();
+    expect(within(stftKeyConcepts).getByText(/频谱进一步压缩、重排或学习成特征向量/)).toBeInTheDocument();
     expect(screen.getByText("频率分辨率：31.25 Hz/bin")).toBeInTheDocument();
     expect(screen.getByText("每帧时长：32.0 ms")).toBeInTheDocument();
     const initialWindowWidth = Number(screen.getByTestId("stft-window-block").getAttribute("width"));

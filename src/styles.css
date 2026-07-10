@@ -1551,6 +1551,17 @@ body.details-open {
   font-size: 10px;
 }
 
+.core-feature-vector .interface-tdm-note {
+  fill: #aebfba;
+  font-size: 9.5px;
+}
+
+.core-feature-bar {
+  fill: rgba(126, 231, 216, 0.82);
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 0.8;
+}
+
 .core-key-concepts {
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(126, 231, 216, 0.14);
@@ -3498,7 +3509,13 @@ body.details-open {
 }
 
 .speech-enhancement-flow-area {
+  display: grid;
+  gap: 14px;
   min-width: 0;
+}
+
+.speech-enhancement-flow-tabs {
+  margin: 0;
 }
 
 .speech-enhancement-wave-control-row {
@@ -3555,9 +3572,7 @@ body.details-open {
 
 .speech-wave-explain-card,
 .speech-principle-card,
-.speech-formula-card,
 .speech-source-reference-card,
-.speech-slider-analysis,
 .speech-soc-section {
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -3570,9 +3585,7 @@ body.details-open {
 
 .speech-wave-explain-card h2,
 .speech-principle-card h2,
-.speech-formula-card h2,
 .speech-source-reference-card h2,
-.speech-slider-analysis h2,
 .speech-soc-heading h2 {
   color: #ffffff;
   font-size: 1rem;
@@ -3580,9 +3593,7 @@ body.details-open {
 }
 
 .speech-wave-explain-card ul,
-.speech-principle-card ul,
-.speech-formula-card ul,
-.speech-slider-analysis ul {
+.speech-principle-card ul {
   color: #dbe8e4;
   display: grid;
   gap: 8px;
@@ -3635,7 +3646,6 @@ body.details-open {
   margin: 0;
 }
 
-.speech-slider-analysis,
 .speech-soc-section {
   margin-top: 18px;
 }
@@ -3924,6 +3934,10 @@ body.details-open {
 
 .speech-stage-wave.ns {
   stroke: #f0b46a;
+}
+
+.speech-stage-wave.dereverb {
+  stroke: #c0d66f;
 }
 
 .speech-stage-wave.agc {

@@ -8,6 +8,8 @@ type SpeechEnhancementLabProps = {
 };
 
 type EnhancementMode = "aec" | "ns" | "agc" | "beamforming" | "dereverb";
+type WaveProcessing = Partial<Record<EnhancementMode, number>>;
+type ProcessingStrengths = Record<EnhancementMode, number>;
 type SocFlow = {
   name: string;
   summary: Record<Language, string>;
@@ -25,6 +27,16 @@ type SocFlow = {
 };
 
 const flowModes: EnhancementMode[] = ["beamforming", "aec", "ns", "dereverb", "agc"];
+const demoNoiseLevel = 45;
+const demoEchoLevel = 55;
+const demoReverbLevel = 35;
+const defaultProcessingStrengths: ProcessingStrengths = {
+  beamforming: 65,
+  aec: 65,
+  ns: 65,
+  dereverb: 65,
+  agc: 65
+};
 
 const modeLabels: Record<EnhancementMode, Record<Language, string>> = {
   beamforming: { zh: "多麦波束成形", en: "Beamforming" },
@@ -128,21 +140,6 @@ const modePrinciples: Record<EnhancementMode, Record<Language, string>[]> = {
       en: "A limiter is often placed after AGC to prevent clipping. In the demo waveform, AGC evens the envelope rather than shifting the waveform up or down."
     }
   ]
-};
-
-const algorithmFormulaNotes: Record<"aec" | "ns" | "agc", Record<Language, string>> = {
-  aec: {
-    zh: "AEC：x(n) 为播放参考，d_hat(n)=sum_k w_k x(n-k)，输出 e(n)=y(n)-d_hat(n)。",
-    en: "AEC: x(n) is playback reference, d_hat(n)=sum_k w_k x(n-k), output e(n)=y(n)-d_hat(n)."
-  },
-  ns: {
-    zh: "ANR/NS：估计噪声 N(k)，计算增益 G(k)，S_hat(k) = G(k)X(k) 保留语音频段。",
-    en: "ANR/NS: estimate noise N(k), compute gain G(k), and keep speech bands with S_hat(k) = G(k)X(k)."
-  },
-  agc: {
-    zh: "AGC：估计短时 rms(n)，g(n) = target / rms(n)，平滑后乘到 PCM 并用 limiter 防削波。",
-    en: "AGC: estimate short-term rms(n), g(n) = target / rms(n), smooth it, apply to PCM, then limit clipping."
-  }
 };
 
 const sourceReferenceRows = [
@@ -306,6 +303,38 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getSelectedProcessing(mode: EnhancementMode, strength: number, micCount: number): WaveProcessing {
+  if (mode === "beamforming" && micCount <= 1) {
+    return {};
+  }
+
+  return { [mode]: strength / 100 };
+}
+
+function gaussian(value: number, center: number, width: number) {
+  return Math.exp(-((value - center) ** 2) / width);
+}
+
+function speechEnvelopeAt(ratio: number) {
+  return clamp(
+    0.18 +
+      gaussian(ratio, 0.18, 0.006) * 0.58 +
+      gaussian(ratio, 0.38, 0.014) * 0.92 +
+      gaussian(ratio, 0.62, 0.01) * 0.72 +
+      gaussian(ratio, 0.82, 0.018) * 0.46,
+    0.16,
+    1
+  );
+}
+
+function speechCarrierAt(ratio: number) {
+  return (
+    Math.sin(ratio * Math.PI * 9.2) * 0.68 +
+    Math.sin(ratio * Math.PI * 18.6 + 0.54) * 0.24 +
+    Math.sin(ratio * Math.PI * 31.2 + 1.15) * 0.1
+  );
+}
+
 function createSpeechWavePath({
   centerY,
   echoLevel,
@@ -313,6 +342,7 @@ function createSpeechWavePath({
   micCount,
   mode,
   noiseLevel,
+  processing,
   reverbLevel,
   pathWidth = 656,
   startX = 42,
@@ -325,46 +355,56 @@ function createSpeechWavePath({
   mode: EnhancementMode;
   noiseLevel: number;
   pathWidth?: number;
+  processing?: WaveProcessing;
   reverbLevel: number;
   startX?: number;
   strength: number;
 }) {
-  const points = 140;
+  const points = 180;
   const y = centerY ?? (enhanced ? 282 : 150);
-  const strengthRatio = strength / 100;
+  const activeProcessing = enhanced ? (processing ?? getSelectedProcessing(mode, strength, micCount)) : {};
   const noise = noiseLevel / 100;
   const echo = echoLevel / 100;
   const reverb = reverbLevel / 100;
   const isMultiMic = micCount > 1;
-  const beamformingAmount = enhanced && mode === "beamforming" && isMultiMic ? strengthRatio * (micCount === 4 ? 1 : 0.72) : 0;
-  const aecAmount = enhanced && mode === "aec" ? strengthRatio : 0;
-  const nsAmount = enhanced && mode === "ns" ? strengthRatio : 0;
-  const dereverbAmount = enhanced && mode === "dereverb" ? strengthRatio : 0;
-  const agcAmount = enhanced && mode === "agc" ? strengthRatio : 0;
-  const noiseScale = noise * Math.max(0.08, 1 - nsAmount * 0.76 - beamformingAmount * 0.38);
-  const echoScale = echo * Math.max(0.05, 1 - aecAmount * 0.86);
-  const reverbScale = reverb * Math.max(0.14, 1 - dereverbAmount * 0.66 - beamformingAmount * 0.16);
-  const gain = 1 + agcAmount * 0.2 + beamformingAmount * 0.08;
+  const beamformingAmount = isMultiMic ? (activeProcessing.beamforming ?? 0) * (micCount === 4 ? 1 : 0.72) : 0;
+  const aecAmount = activeProcessing.aec ?? 0;
+  const nsAmount = activeProcessing.ns ?? 0;
+  const dereverbAmount = activeProcessing.dereverb ?? 0;
+  const agcAmount = activeProcessing.agc ?? 0;
+  const noiseScale = noise * Math.max(0.03, 1 - nsAmount * 0.93 - beamformingAmount * 0.48);
+  const echoScale = echo * Math.max(0.02, 1 - aecAmount * 0.94);
+  const reverbScale = reverb * Math.max(0.05, 1 - dereverbAmount * 0.9 - beamformingAmount * 0.18);
+  const targetEnvelope = 0.58;
+  const speechPresenceBoost = 1 + beamformingAmount * 0.14;
 
   return Array.from({ length: points }, (_, index) => {
     const ratio = index / (points - 1);
     const pointX = startX + ratio * pathWidth;
-    const speechEnvelope = 0.42 + Math.sin(ratio * Math.PI) * 0.58;
-    const leveledEnvelope = speechEnvelope + (0.74 - speechEnvelope) * agcAmount * 0.72;
-    const speech =
-      Math.sin(ratio * Math.PI * 8.4) * 0.62 +
-      Math.sin(ratio * Math.PI * 18.2 + 0.6) * 0.24;
+    const speechEnvelope = speechEnvelopeAt(ratio);
+    const leveledEnvelope = speechEnvelope + (targetEnvelope - speechEnvelope) * agcAmount * 0.9;
+    const speech = speechCarrierAt(ratio);
     const noiseTexture =
-      Math.sin(ratio * Math.PI * 72 + 0.4) * 0.38 +
-      Math.sin(ratio * Math.PI * 113 + 1.3) * 0.2;
-    const echoTail = Math.sin(Math.max(0, ratio - 0.1) * Math.PI * 8.4) * Math.exp(-ratio * 1.4);
-    const reverbTail = Math.sin(ratio * Math.PI * 29) * Math.exp(-ratio * 1.15);
+      Math.sin(ratio * Math.PI * 92 + 0.4) * 0.52 +
+      Math.sin(ratio * Math.PI * 143 + 1.3) * 0.3 +
+      Math.sin(ratio * Math.PI * 211 + 0.2) * 0.14;
+    const delayedRatio = Math.max(0, ratio - 0.12);
+    const echoTail =
+      delayedRatio === 0
+        ? 0
+        : speechCarrierAt(delayedRatio) * speechEnvelopeAt(delayedRatio) * Math.exp(-delayedRatio * 1.2);
+    const lateRatio = Math.max(0, ratio - 0.18);
+    const reverbTail =
+      (Math.sin(lateRatio * Math.PI * 24 + 0.4) * 0.54 +
+        Math.sin(lateRatio * Math.PI * 41 + 1.6) * 0.25) *
+      Math.exp(-lateRatio * 1.55);
     const value =
-      speech * leveledEnvelope * gain +
-      noiseTexture * noiseScale * 0.38 +
-      echoTail * echoScale * 0.48 +
-      reverbTail * reverbScale * 0.34;
-    const pointY = y - clamp(value, -1.2, 1.2) * 46;
+      speech * leveledEnvelope * speechPresenceBoost +
+      noiseTexture * noiseScale * 0.52 +
+      echoTail * echoScale * 0.92 +
+      reverbTail * reverbScale * 0.58;
+    const limitedValue = clamp(value, -1.08, 1.08);
+    const pointY = y - limitedValue * 48;
 
     return `${index === 0 ? "M" : "L"} ${pointX.toFixed(1)} ${pointY.toFixed(1)}`;
   }).join(" ");
@@ -589,47 +629,59 @@ function AlgorithmStageWaveChart({
   micCount,
   noiseLevel,
   reverbLevel,
-  strength
+  strengths
 }: {
   echoLevel: number;
   language: Language;
   micCount: number;
   noiseLevel: number;
   reverbLevel: number;
-  strength: number;
+  strengths: ProcessingStrengths;
 }) {
+  const aecStrength = strengths.aec / 100;
+  const nsStrength = strengths.ns / 100;
+  const dereverbStrength = strengths.dereverb / 100;
+  const agcStrength = strengths.agc / 100;
   const stages = [
     {
       id: "raw",
       label: { zh: "原始采集", en: "Raw capture" },
-      mode: "aec",
+      processing: {},
       enhanced: false,
       x: 54,
-      y: 90
+      y: 86
     },
     {
       id: "aec",
       label: { zh: "AEC 后", en: "After AEC" },
-      mode: "aec",
+      processing: { aec: aecStrength },
       enhanced: true,
       x: 54,
-      y: 168
+      y: 154
     },
     {
       id: "ns",
       label: { zh: "NS / ANR 后", en: "After NS / ANR" },
-      mode: "ns",
+      processing: { aec: aecStrength, ns: nsStrength },
       enhanced: true,
       x: 54,
-      y: 246
+      y: 222
+    },
+    {
+      id: "dereverb",
+      label: { zh: "去混响后", en: "After dereverb" },
+      processing: { aec: aecStrength, ns: nsStrength, dereverb: dereverbStrength },
+      enhanced: true,
+      x: 54,
+      y: 290
     },
     {
       id: "agc",
       label: { zh: "AGC 后", en: "After AGC" },
-      mode: "agc",
+      processing: { aec: aecStrength, ns: nsStrength, dereverb: dereverbStrength, agc: agcStrength },
       enhanced: true,
       x: 54,
-      y: 324
+      y: 358
     }
   ] as const;
 
@@ -638,10 +690,10 @@ function AlgorithmStageWaveChart({
       aria-label={language === "zh" ? "语音增强算法链路波形变化图" : "Speech enhancement algorithm-stage waveform chart"}
       className="speech-stage-wave-chart"
       role="img"
-      viewBox="0 0 740 390"
+      viewBox="0 0 740 430"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <rect className="lab-diagram-bg" height="390" rx="16" width="740" />
+      <rect className="lab-diagram-bg" height="430" rx="16" width="740" />
       <text className="speech-lab-chart-title" x="44" y="42">
         {language === "zh" ? "算法链路中波形如何逐步变化" : "How the waveform changes through the algorithm chain"}
       </text>
@@ -657,20 +709,21 @@ function AlgorithmStageWaveChart({
               echoLevel,
               enhanced: stage.enhanced,
               micCount,
-              mode: stage.mode,
+              mode: "aec",
               noiseLevel,
               pathWidth: 524,
+              processing: stage.processing,
               reverbLevel,
               startX: 176,
-              strength
+              strength: strengths.aec
             })}
           />
         </g>
       ))}
-      <text className="speech-lab-note" x="54" y="370">
+      <text className="speech-lab-note" x="54" y="410">
         {language === "zh"
-          ? "示意：AEC 压低延迟回声，NS/ANR 减少细碎噪声，AGC 让包络更均匀。"
-          : "Illustration: AEC lowers delayed echo, NS/ANR reduces fine noise, and AGC evens the envelope."}
+          ? "累计示意：AEC 压低延迟回声，NS/ANR 减少细碎噪声，去混响缩短拖尾，AGC 拉平包络。"
+          : "Cumulative view: AEC lowers echo, NS/ANR reduces fine noise, dereverb shortens tails, and AGC evens the envelope."}
       </text>
     </svg>
   );
@@ -678,11 +731,12 @@ function AlgorithmStageWaveChart({
 
 export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabProps) {
   const [mode, setMode] = useState<EnhancementMode>("beamforming");
-  const [strength, setStrength] = useState(65);
-  const [noiseLevel, setNoiseLevel] = useState(45);
-  const [echoLevel, setEchoLevel] = useState(55);
-  const [reverbLevel, setReverbLevel] = useState(35);
+  const [strengths, setStrengths] = useState<ProcessingStrengths>(() => ({ ...defaultProcessingStrengths }));
   const [micCount, setMicCount] = useState(2);
+  const strength = strengths[mode];
+  const noiseLevel = demoNoiseLevel;
+  const echoLevel = demoEchoLevel;
+  const reverbLevel = demoReverbLevel;
   const availableModes = flowModes.filter((item) => item !== "beamforming" || micCount > 1);
 
   const metrics = useMemo(() => {
@@ -704,6 +758,13 @@ export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabP
     if (count === 1 && mode === "beamforming") {
       setMode("aec");
     }
+  }
+
+  function handleStrengthChange(value: number) {
+    setStrengths((current) => ({
+      ...current,
+      [mode]: value
+    }));
   }
 
   return (
@@ -728,17 +789,16 @@ export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabP
         aria-label={language === "zh" ? "语音增强实验台" : "Speech enhancement workbench"}
         className="speech-enhancement-workbench"
       >
-        <div className="waveform-tabs speech-enhancement-tabs" role="group" aria-label={language === "zh" ? "语音增强模块" : "Speech enhancement modules"}>
-          {availableModes.map((item) => (
-            <button className={mode === item ? "active" : ""} key={item} type="button" onClick={() => setMode(item)}>
-              {modeLabels[item][language]}
-            </button>
-          ))}
-        </div>
-
         <div className="speech-enhancement-layout">
           <div className="speech-enhancement-flow-area">
             <EnhancementFlowChart language={language} micCount={micCount} mode={mode} />
+            <div className="waveform-tabs speech-enhancement-tabs speech-enhancement-flow-tabs" role="group" aria-label={language === "zh" ? "语音增强模块" : "Speech enhancement modules"}>
+              {availableModes.map((item) => (
+                <button className={mode === item ? "active" : ""} key={item} type="button" onClick={() => setMode(item)}>
+                  {modeLabels[item][language]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="speech-enhancement-wave-control-row">
@@ -758,30 +818,25 @@ export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabP
                 micCount={micCount}
                 noiseLevel={noiseLevel}
                 reverbLevel={reverbLevel}
-                strength={strength}
+                strengths={strengths}
               />
-              <section className="speech-wave-explain-card" aria-label={language === "zh" ? "滑块如何影响波形" : "How sliders affect the waveform"}>
+              <section className="speech-wave-explain-card" aria-label={language === "zh" ? "强度如何影响波形" : "How strength affects the waveform"}>
                 <h2>{language === "zh" ? "波形如何变化" : "How the waveform changes"}</h2>
                 <ul>
                   <li>
                     {language === "zh"
-                      ? "当前模块强度：只作用于选中的算法。选 AEC 时增强后波形里的回声尾巴变短；选 NS/ANR 时细碎噪声纹理变少；选去混响时拖尾变短；选 AGC 时上下包络更均匀。"
-                      : "Current module strength affects only the selected algorithm. With AEC, echo tails shrink; with NS/ANR, fine noise texture drops; with dereverb, tails shorten; with AGC, the envelope becomes more even."}
+                      ? "当前模块强度：只保存到选中的算法。上方对比图展示选中算法单独处理的趋势，链路图按 AEC、NS/ANR、去混响、AGC 的顺序累计显示。"
+                      : "Current module strength is stored only for the selected algorithm. The comparison chart shows that selected module alone, while the chain chart accumulates AEC, NS/ANR, dereverb, then AGC."}
                   </li>
                   <li>
                     {language === "zh"
-                      ? "噪声强度：增加原始波形上的高频细碎抖动。只有 NS/ANR 或多麦波束成形被选中时，增强后波形会明显把这部分压低。"
-                      : "Noise level adds fine high-frequency jitter to the raw waveform. The enhanced waveform suppresses it strongly only when NS/ANR or beamforming is selected."}
+                      ? "演示输入固定包含噪声、回声和混响，用来观察各模块负责的干扰类型：AEC 处理延迟回声，NS/ANR 处理细碎噪声，去混响处理衰减拖尾。"
+                      : "The demo input always contains noise, echo, and reverb so each module has a stable target: AEC handles delayed echo, NS/ANR handles fine noise, and dereverb handles decaying tails."}
                   </li>
                   <li>
                     {language === "zh"
-                      ? "回声强度：增加与语音相似但延迟后的波峰和尾巴。只有 AEC 被选中时，增强后波形会明显减少这些延迟成分。"
-                      : "Echo level adds delayed speech-like peaks and tails. The enhanced waveform reduces those delayed components mainly when AEC is selected."}
-                  </li>
-                  <li>
-                    {language === "zh"
-                      ? "混响拖尾：增加持续衰减的房间反射，让波形尾部更密、更长。去混响会缩短这段拖尾，多麦增强只能轻微改善。"
-                      : "Reverb tail adds sustained decaying room reflections, making the waveform tail denser and longer. Dereverb shortens it; beamforming only helps slightly."}
+                      ? "前级算法强度会传递到后级波形；后级算法强度不会回头改变前级波形。例如提高 NS/ANR 不会改变 AEC 后波形，但会改变 NS/ANR 后、去混响后和 AGC 后波形。"
+                      : "Upstream strength propagates downstream; downstream strength never changes earlier rows. For example, raising NS/ANR leaves the AEC row unchanged but changes the NS/ANR, dereverb, and AGC rows."}
                   </li>
                 </ul>
               </section>
@@ -790,14 +845,6 @@ export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabP
                 <ul>
                   {modePrinciples[mode].map((point) => (
                     <li key={point.en}>{point[language]}</li>
-                  ))}
-                </ul>
-              </section>
-              <section className="speech-formula-card" aria-label={language === "zh" ? "核心算法数学形式" : "Core algorithm equations"}>
-                <h2>{language === "zh" ? "核心算法数学形式" : "Core equations"}</h2>
-                <ul>
-                  {(["aec", "ns", "agc"] as const).map((item) => (
-                    <li key={item}>{algorithmFormulaNotes[item][language]}</li>
                   ))}
                 </ul>
               </section>
@@ -839,19 +886,7 @@ export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabP
               </p>
               <label className="sound-lab-control">
                 <span>{language === "zh" ? `当前模块强度：${strength}%` : `Current module strength: ${strength}%`}</span>
-                <input aria-label={language === "zh" ? "处理强度" : "Processing strength"} max="100" min="0" step="5" type="range" value={strength} onChange={(event) => setStrength(Number(event.target.value))} />
-              </label>
-              <label className="sound-lab-control">
-                <span>{language === "zh" ? `噪声强度：${noiseLevel}%` : `Noise level: ${noiseLevel}%`}</span>
-                <input aria-label={language === "zh" ? "噪声强度" : "Noise level"} max="100" min="0" step="5" type="range" value={noiseLevel} onChange={(event) => setNoiseLevel(Number(event.target.value))} />
-              </label>
-              <label className="sound-lab-control">
-                <span>{language === "zh" ? `回声强度：${echoLevel}%` : `Echo level: ${echoLevel}%`}</span>
-                <input aria-label={language === "zh" ? "回声强度" : "Echo level"} max="100" min="0" step="5" type="range" value={echoLevel} onChange={(event) => setEchoLevel(Number(event.target.value))} />
-              </label>
-              <label className="sound-lab-control">
-                <span>{language === "zh" ? `混响拖尾：${reverbLevel}%` : `Reverb tail: ${reverbLevel}%`}</span>
-                <input aria-label={language === "zh" ? "混响拖尾" : "Reverb tail"} max="100" min="0" step="5" type="range" value={reverbLevel} onChange={(event) => setReverbLevel(Number(event.target.value))} />
+                <input aria-label={language === "zh" ? "处理强度" : "Processing strength"} max="100" min="0" step="5" type="range" value={strength} onChange={(event) => handleStrengthChange(Number(event.target.value))} />
               </label>
               <div className="speech-enhancement-metrics">
                 <strong>{language === "zh" ? `估计降噪：${metrics.noiseReduction} dB` : `Estimated NS: ${metrics.noiseReduction} dB`}</strong>
@@ -871,27 +906,6 @@ export function SpeechEnhancementLab({ language, onBack }: SpeechEnhancementLabP
               <p>{row[language]}</p>
             </article>
           ))}
-        </section>
-
-        <section className="speech-slider-analysis" aria-label={language === "zh" ? "滑块和波形关系说明" : "Slider and waveform explanation"}>
-          <h2>{language === "zh" ? "滑块 / 窗口对波形的影响是否合理？" : "Are the slider and waveform effects reasonable?"}</h2>
-          <ul>
-            <li>
-              {language === "zh"
-                ? "当前模块强度只影响正在查看的算法：AEC 主要压低回声尾巴，NS/ANR 主要压低高频噪声纹理，去混响主要缩短反射拖尾，AGC 主要把包络拉向目标电平。"
-                : "Current module strength affects only the selected algorithm: AEC lowers echo tails, NS/ANR lowers high-frequency noise texture, dereverb shortens reflection tails, and AGC moves the envelope toward a target level."}
-            </li>
-            <li>
-              {language === "zh"
-                ? "噪声、回声、混响三个滑块表示输入环境条件，所以会同时改变原始采集波形；增强后波形是否变化明显，取决于当前模块是否处理这类干扰。"
-                : "Noise, echo, and reverb sliders represent input conditions, so they change the raw capture waveform. The enhanced waveform changes strongly only when the selected module handles that interference type."}
-            </li>
-            <li>
-              {language === "zh"
-                ? "真实 SDK 通常按 10-20 ms 帧窗处理。帧窗变长会让估计更稳定但增加延迟，帧窗变短会更实时但估计抖动更明显；它不应该让波形整体上下平移。"
-                : "Real SDKs usually process 10-20 ms frames. Longer windows stabilize estimates but add latency; shorter windows react faster but jitter more. They should not shift the whole waveform up or down."}
-            </li>
-          </ul>
         </section>
 
         <section className="speech-soc-section" aria-label={language === "zh" ? "SoC SDK 音频处理流程" : "SoC SDK audio processing flows"}>
