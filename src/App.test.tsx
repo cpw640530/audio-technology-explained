@@ -253,26 +253,58 @@ describe("Audio knowledge app", () => {
 
     const lab = screen.getByRole("main", { name: "车载声学实验室" });
     expect(within(lab).getByRole("heading", { name: "车载声学实验室" })).toBeInTheDocument();
+    const layoutModule = within(lab).getByRole("button", { name: "整车布局" });
+    const voiceModule = within(lab).getByRole("button", { name: "语音交互" });
+    const localizationModule = within(lab).getByRole("button", { name: "声源定位" });
+    const spatialAudioModule = within(lab).getByRole("button", { name: "空间音频" });
+    const noiseCancellationModule = within(lab).getByRole("button", { name: "ANC / RNC" });
+
+    expect(layoutModule).toHaveAttribute("aria-pressed", "true");
+    expect(voiceModule).toHaveAttribute("aria-pressed", "false");
+    expect(localizationModule).toBeInTheDocument();
+    expect(spatialAudioModule).toBeInTheDocument();
+    expect(noiseCancellationModule).toBeInTheDocument();
+
     const cabinImage = within(lab).getByRole("img", { name: "车载声学座舱部件位置图" });
     expect(cabinImage).toBeInTheDocument();
     expect(within(cabinImage).getByText("顶灯麦克风阵列")).toBeInTheDocument();
     expect(within(cabinImage).getByText("门板扬声器")).toBeInTheDocument();
     expect(within(cabinImage).getByText("中置扬声器")).toBeInTheDocument();
     expect(within(cabinImage).getByText("ANC 误差麦")).toBeInTheDocument();
-    expect(within(cabinImage).getByText("声源定位")).toBeInTheDocument();
-    expect(within(cabinImage).getByText("语音助手")).toBeInTheDocument();
-    expect(within(cabinImage).getByText("座舱空间音频")).toBeInTheDocument();
-    expect(within(cabinImage).getByText("主动降噪 ANC")).toBeInTheDocument();
-    expect(within(cabinImage).getByText("唤醒词 -> ASR -> NLU / LLM -> 车辆控制 / 语音反馈")).toBeInTheDocument();
-    expect(within(lab).getByRole("heading", { name: "每个模块解决什么问题" })).toBeInTheDocument();
-    expect(within(lab).getByText("车载语音助手交互")).toBeInTheDocument();
-    expect(within(lab).getByText("麦克风与扬声器位置")).toBeInTheDocument();
-    expect(within(lab).getByText("主动降噪 ANC / RNC")).toBeInTheDocument();
-    expect(within(lab).getAllByText("座舱空间音频").length).toBeGreaterThanOrEqual(2);
-    expect(within(lab).getByRole("heading", { name: "典型问题诊断" })).toBeInTheDocument();
-    expect(within(lab).getByText("唤醒错人")).toBeInTheDocument();
-    expect(within(lab).getByText("定位漂移")).toBeInTheDocument();
-    expect(within(lab).getByText("ANC 压耳或轰鸣")).toBeInTheDocument();
+    expect(within(cabinImage).getByText("车头")).toBeInTheDocument();
+    expect(within(cabinImage).getByText("车尾")).toBeInTheDocument();
+    expect(within(lab).getByRole("heading", { name: "整车声学布局" })).toBeInTheDocument();
+
+    await user.click(voiceModule);
+    expect(voiceModule).toHaveAttribute("aria-pressed", "true");
+    expect(layoutModule).toHaveAttribute("aria-pressed", "false");
+    expect(within(lab).queryByRole("heading", { name: "整车声学布局" })).not.toBeInTheDocument();
+    expect(within(lab).getByRole("heading", { name: "从一句话到车辆动作" })).toBeInTheDocument();
+    expect(within(lab).getByText(/AEC.*降噪.*波束形成/)).toBeInTheDocument();
+
+    await user.click(localizationModule);
+    expect(localizationModule).toHaveAttribute("aria-pressed", "true");
+    expect(voiceModule).toHaveAttribute("aria-pressed", "false");
+    expect(within(lab).queryByRole("heading", { name: "从一句话到车辆动作" })).not.toBeInTheDocument();
+    expect(within(lab).getByText("Δt = d sin(θ) / c")).toBeInTheDocument();
+    expect(within(lab).getByText(/定位负责判断方向/)).toBeInTheDocument();
+    expect(within(lab).getByText(/波束形成负责增强目标方向/)).toBeInTheDocument();
+
+    await user.click(spatialAudioModule);
+    expect(spatialAudioModule).toHaveAttribute("aria-pressed", "true");
+    expect(localizationModule).toHaveAttribute("aria-pressed", "false");
+    expect(within(lab).queryByText("Δt = d sin(θ) / c")).not.toBeInTheDocument();
+    expect(within(lab).getByRole("heading", { name: "让每类声音出现在合适方向" })).toBeInTheDocument();
+    expect(within(lab).getByText(/安全告警优先于娱乐声场/)).toBeInTheDocument();
+
+    await user.click(noiseCancellationModule);
+    expect(noiseCancellationModule).toHaveAttribute("aria-pressed", "true");
+    expect(spatialAudioModule).toHaveAttribute("aria-pressed", "false");
+    expect(within(lab).queryByRole("heading", { name: "让每类声音出现在合适方向" })).not.toBeInTheDocument();
+    expect(within(lab).getByRole("heading", { name: "用闭环控制削弱稳定低频噪声" })).toBeInTheDocument();
+    expect(
+      within(lab).getByText("参考信号 -> ANC 控制器 -> 扬声器反相信号 -> 座舱残余噪声 -> 误差麦反馈"),
+    ).toBeInTheDocument();
   });
 
   it("expands IoT and content creation with a dual-path audio workflow lab", async () => {
