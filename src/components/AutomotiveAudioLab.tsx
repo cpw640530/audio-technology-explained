@@ -129,13 +129,19 @@ function AutomotiveCabinDiagram({ activeModule, language }: { activeModule: Auto
 
   return (
     <figure className="automotive-diagram">
-      <svg
-        aria-label={t("车载声学座舱部件位置图", "In-car acoustics cabin component layout diagram")}
-        data-active-module={activeModule}
-        role="img"
-        viewBox="0 0 980 600"
-        xmlns="http://www.w3.org/2000/svg"
+      <div
+        aria-label={t("可水平滚动的座舱部件图", "Horizontally scrollable cabin component diagram")}
+        className="automotive-diagram-scroll"
+        role="region"
+        tabIndex={0}
       >
+        <svg
+          aria-label={t("车载声学座舱部件位置图", "In-car acoustics cabin component layout diagram")}
+          data-active-module={activeModule}
+          role="img"
+          viewBox="0 0 980 600"
+          xmlns="http://www.w3.org/2000/svg"
+        >
         <defs>
           <marker id={arrowMarkerId} markerHeight="8" markerWidth="8" orient="auto" refX="7" refY="4">
             <path d="M0 0 8 4 0 8Z" fill="#1f7569" />
@@ -276,7 +282,8 @@ function AutomotiveCabinDiagram({ activeModule, language }: { activeModule: Auto
           <path className="auto-anc-wave" d="M566 330 Q660 410 736 540" markerEnd={`url(#${arrowMarkerId})`} />
           </g>
         )}
-      </svg>
+        </svg>
+      </div>
       <figcaption>
         {t(
           "选择模块，观察麦克风、扬声器与控制链路如何在同一座舱中协同。",

@@ -267,6 +267,14 @@ describe("Audio knowledge app", () => {
 
     const cabinImage = within(lab).getByRole("img", { name: "车载声学座舱部件位置图" });
     expect(cabinImage).toBeInTheDocument();
+    const figure = cabinImage.closest("figure");
+    expect(figure).not.toBeNull();
+    const scrollRegion = within(figure!).getByRole("region", { name: "可水平滚动的座舱部件图" });
+    const diagramCaption = figure!.querySelector("figcaption");
+    expect(scrollRegion).toContainElement(cabinImage);
+    expect(scrollRegion).not.toContainElement(diagramCaption);
+    expect(diagramCaption?.parentElement).toBe(figure);
+    expect(scrollRegion).toHaveAttribute("tabindex", "0");
     type OverlayModule = "layout" | "voice" | "localization" | "spatial" | "anc";
     const expectActiveOverlay = (activeModule: OverlayModule) => {
       const overlays = cabinImage.querySelectorAll("[data-module]");
