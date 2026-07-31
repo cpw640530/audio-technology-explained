@@ -43,10 +43,10 @@ const automotiveModules: Record<AutomotiveModule, ModuleContent> = {
   },
   voice: {
     label: { zh: "语音交互", en: "Voice interaction" },
-    heading: { zh: "从一句话到车辆动作", en: "From an utterance to a vehicle action" },
+    heading: { zh: "从一句话到车辆动作", en: "From speech to a permitted vehicle action" },
     goal: {
-      zh: "在音乐、路噪和多人说话中可靠识别驾驶员指令，并给出可感知的车辆反馈。",
-      en: "Reliably recognize the driver's command amid playback, road noise, and competing talkers, then provide perceptible vehicle feedback."
+      zh: "在音乐、路噪和多人说话中识别说话座位与意图，再按座位权限执行车辆动作并给出可感知反馈。",
+      en: "Identify the speaking seat and intent amid playback, road noise, and competing talkers, then apply seat permissions before acting and providing perceptible feedback."
     },
     chain: {
       zh: "说话人 -> 顶灯麦阵 -> AEC / 降噪 / 波束形成 -> 唤醒 / ASR -> 意图理解与安全策略 -> 获准的车辆控制 / 语音反馈",
@@ -57,8 +57,8 @@ const automotiveModules: Record<AutomotiveModule, ModuleContent> = {
       en: "Vehicle speed, driving state, seat permission, and safety policy must be considered so passengers or playback cannot trigger unsafe or unauthorized control."
     },
     example: {
-      zh: "驾驶员说“打开主驾车窗”，系统确认声源在主驾后执行动作并播报结果。",
-      en: "When the driver says “open my window,” the system confirms the driver seat, performs the action, and announces the result."
+      zh: "驾驶员可以调节空调；后排乘客通常只能控制自己的娱乐区域。",
+      en: "The driver may adjust climate controls, while rear passengers are usually limited to their own entertainment zone."
     }
   },
   localization: {
@@ -80,7 +80,7 @@ const automotiveModules: Record<AutomotiveModule, ModuleContent> = {
   },
   spatial: {
     label: { zh: "空间音频", en: "Spatial audio" },
-    heading: { zh: "让每类声音出现在合适方向", en: "Place each sound in an appropriate direction" },
+    heading: { zh: "让每类声音出现在合适方向", en: "Place each sound in a useful direction" },
     goal: {
       zh: "通过扬声器布局、延迟、EQ、相位和座位补偿，把音乐、导航、告警与助手反馈放到清晰方向。",
       en: "Use speaker layout, delay, EQ, phase, and seat compensation to place music, navigation, alerts, and assistant feedback clearly."
@@ -121,6 +121,40 @@ const automotiveModules: Record<AutomotiveModule, ModuleContent> = {
 };
 
 const moduleOrder = Object.keys(automotiveModules) as AutomotiveModule[];
+
+type LegendItem = {
+  id: "voice-mic" | "error-mic" | "speaker" | "noise";
+  label: LocalizedText;
+  symbol: string;
+  relevantTo: AutomotiveModule[];
+};
+
+const legendItems: LegendItem[] = [
+  {
+    id: "voice-mic",
+    label: { zh: "语音麦克风", en: "Voice mic" },
+    symbol: "MIC",
+    relevantTo: ["layout", "voice", "localization"]
+  },
+  {
+    id: "error-mic",
+    label: { zh: "ANC 误差麦", en: "ANC error mic" },
+    symbol: "ANC",
+    relevantTo: ["layout", "anc"]
+  },
+  {
+    id: "speaker",
+    label: { zh: "扬声器", en: "Speaker" },
+    symbol: "SPK",
+    relevantTo: ["layout", "voice", "spatial", "anc"]
+  },
+  {
+    id: "noise",
+    label: { zh: "外部噪声源", en: "External noise source" },
+    symbol: "NOISE",
+    relevantTo: ["layout", "anc"]
+  }
+];
 
 function AutomotiveCabinDiagram({ activeModule, language }: { activeModule: AutomotiveModule; language: Language }) {
   const arrowMarkerId = useId();
@@ -283,6 +317,33 @@ function AutomotiveCabinDiagram({ activeModule, language }: { activeModule: Auto
           </g>
         )}
         </svg>
+      </div>
+      <div
+        aria-label={t("车载声学图例", "Automotive acoustics legend")}
+        className="automotive-legend"
+        role="region"
+      >
+        <ul>
+          {legendItems.map((item) => {
+            const secondaryLanguage = language === "zh" ? "en" : "zh";
+            const isRelevant = item.relevantTo.includes(activeModule);
+            const accessibleLabel =
+              language === "zh"
+                ? `${item.label.zh} - ${isRelevant ? "当前模块相关" : "当前模块不相关"}`
+                : `${item.label.en} - ${isRelevant ? "Relevant to current module" : "Not relevant to current module"}`;
+            return (
+              <li aria-label={accessibleLabel} data-relevant={isRelevant} key={item.id}>
+                <span aria-hidden="true" className={`automotive-legend-swatch ${item.id}`}>
+                  {item.symbol}
+                </span>
+                <span className="automotive-legend-label">
+                  <span>{item.label[language]}</span>
+                  <small lang={secondaryLanguage}>{item.label[secondaryLanguage]}</small>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
       <figcaption>
         {t(

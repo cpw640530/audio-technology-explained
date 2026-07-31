@@ -290,6 +290,24 @@ describe("Audio knowledge app", () => {
     expect(within(cabinImage).getByText("车头")).toBeInTheDocument();
     expect(within(cabinImage).getByText("车尾")).toBeInTheDocument();
     expect(within(lab).getByRole("heading", { name: "整车声学布局" })).toBeInTheDocument();
+    const legend = within(lab).getByRole("region", { name: "车载声学图例" });
+    expect(within(legend).getByText("语音麦克风")).toBeInTheDocument();
+    expect(within(legend).getByText("ANC 误差麦")).toBeInTheDocument();
+    expect(within(legend).getByText("扬声器")).toBeInTheDocument();
+    expect(within(legend).getByText("外部噪声源")).toBeInTheDocument();
+    const legendLabels = ["语音麦克风", "ANC 误差麦", "扬声器", "外部噪声源"] as const;
+    const expectLegendRelevance = (relevantLabels: readonly (typeof legendLabels)[number][]) => {
+      const relevantItems = within(legend).getAllByRole("listitem", { name: / - 当前模块相关$/ });
+      expect(relevantItems).toHaveLength(relevantLabels.length);
+
+      for (const label of legendLabels) {
+        const isRelevant = relevantLabels.includes(label);
+        const status = isRelevant ? "当前模块相关" : "当前模块不相关";
+        const item = within(legend).getByRole("listitem", { name: `${label} - ${status}` });
+        expect(within(item).getByText(label)).toBeInTheDocument();
+      }
+    };
+    expectLegendRelevance(legendLabels);
 
     await user.click(voiceModule);
     expectActiveOverlay("voice");
@@ -298,6 +316,10 @@ describe("Audio knowledge app", () => {
     expect(within(lab).queryByRole("heading", { name: "整车声学布局" })).not.toBeInTheDocument();
     expect(within(lab).getByRole("heading", { name: "从一句话到车辆动作" })).toBeInTheDocument();
     expect(within(lab).getByText(/AEC.*降噪.*波束形成/)).toBeInTheDocument();
+    expect(
+      within(lab).getByText("驾驶员可以调节空调；后排乘客通常只能控制自己的娱乐区域。"),
+    ).toBeInTheDocument();
+    expectLegendRelevance(["语音麦克风", "扬声器"]);
 
     await user.click(localizationModule);
     expectActiveOverlay("localization");
@@ -307,6 +329,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText("Δt = d sin(θ) / c")).toBeInTheDocument();
     expect(within(lab).getByText(/定位负责判断方向/)).toBeInTheDocument();
     expect(within(lab).getByText(/波束形成负责增强目标方向/)).toBeInTheDocument();
+    expectLegendRelevance(["语音麦克风"]);
 
     await user.click(spatialAudioModule);
     expectActiveOverlay("spatial");
@@ -315,6 +338,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).queryByText("Δt = d sin(θ) / c")).not.toBeInTheDocument();
     expect(within(lab).getByRole("heading", { name: "让每类声音出现在合适方向" })).toBeInTheDocument();
     expect(within(lab).getByText(/安全告警优先于娱乐声场/)).toBeInTheDocument();
+    expectLegendRelevance(["扬声器"]);
 
     await user.click(noiseCancellationModule);
     expectActiveOverlay("anc");
@@ -324,6 +348,48 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByRole("heading", { name: "用闭环控制削弱稳定低频噪声" })).toBeInTheDocument();
     expect(
       within(lab).getByText("参考信号 -> ANC 控制器 -> 扬声器反相信号 -> 座舱残余噪声 -> 误差麦反馈"),
+    ).toBeInTheDocument();
+    expectLegendRelevance(["ANC 误差麦", "扬声器", "外部噪声源"]);
+  });
+
+  it("keeps the English in-car acoustics legend and module explanations complete", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "English" }));
+    const categoriesRegion = screen.getByRole("region", { name: "Knowledge Areas" });
+    await user.click(within(categoriesRegion).getByRole("button", { name: /Applications/ }));
+    await user.click(screen.getByRole("button", { name: /In-Car Acoustics/ }));
+
+    const details = screen.getByRole("dialog", { name: "Topic details" });
+    await user.click(within(details).getByRole("button", { name: "Open in-car acoustics lab" }));
+
+    const lab = screen.getByRole("main", { name: "In-Car Acoustics Lab" });
+    const legend = within(lab).getByRole("region", { name: "Automotive acoustics legend" });
+    expect(within(legend).getByText("Voice mic")).toBeInTheDocument();
+    expect(within(legend).getByText("ANC error mic")).toBeInTheDocument();
+    expect(within(legend).getByText("Speaker")).toBeInTheDocument();
+    expect(within(legend).getByText("External noise source")).toBeInTheDocument();
+    expect(within(lab).getByRole("heading", { name: "Whole-vehicle acoustic layout" })).toBeInTheDocument();
+
+    const expectedModules = [
+      ["Whole-car layout", "Whole-vehicle acoustic layout"],
+      ["Voice interaction", "From speech to a permitted vehicle action"],
+      ["Source localization", "Use time differences to identify the speaking seat"],
+      ["Spatial audio", "Place each sound in a useful direction"],
+      ["ANC / RNC", "Reduce steady low-frequency noise with closed-loop control"],
+    ] as const;
+
+    for (const [control, heading] of expectedModules) {
+      await user.click(within(lab).getByRole("button", { name: control }));
+      expect(within(lab).getByRole("heading", { name: heading })).toBeInTheDocument();
+    }
+
+    await user.click(within(lab).getByRole("button", { name: "Voice interaction" }));
+    expect(
+      within(lab).getByText(
+        "The driver may adjust climate controls, while rear passengers are usually limited to their own entertainment zone.",
+      ),
     ).toBeInTheDocument();
   });
 

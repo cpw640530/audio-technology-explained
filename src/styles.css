@@ -3056,6 +3056,83 @@ body.details-open {
   margin: 0;
 }
 
+.automotive-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.automotive-legend li {
+  align-items: center;
+  color: #34413e;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.automotive-legend-swatch {
+  align-items: center;
+  border: 1px solid rgba(23, 33, 31, 0.18);
+  border-radius: 4px;
+  color: #17211f;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.58rem;
+  font-weight: 850;
+  justify-content: center;
+  min-height: 24px;
+  min-width: 38px;
+  padding: 2px 5px;
+  transition: border-color 160ms ease, filter 160ms ease;
+}
+
+.automotive-legend li[data-relevant="false"] .automotive-legend-swatch {
+  border-style: dashed;
+  filter: saturate(0.35);
+}
+
+.automotive-legend li[data-relevant="true"] .automotive-legend-swatch {
+  border-color: currentColor;
+  border-style: solid;
+  filter: none;
+}
+
+.automotive-legend-swatch.voice-mic {
+  background: #dcefeb;
+  color: #185e55;
+}
+
+.automotive-legend-swatch.error-mic {
+  background: #e7eef8;
+  color: #345e98;
+}
+
+.automotive-legend-swatch.speaker {
+  background: #fff0dc;
+  color: #8f4f1d;
+}
+
+.automotive-legend-swatch.noise {
+  background: #fbe8ee;
+  color: #8f3654;
+}
+
+.automotive-legend-label {
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.automotive-legend-label small {
+  color: #65736f;
+  font-size: 0.68rem;
+  font-weight: 620;
+}
+
 .auto-diagram-bg {
   fill: #f7faf8;
 }
