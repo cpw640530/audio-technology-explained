@@ -2953,16 +2953,12 @@ body.details-open {
 }
 
 .automotive-lab-hero,
-.automotive-diagram-section,
-.automotive-module-section,
-.automotive-issue-section {
+.automotive-diagram-section {
   max-width: 1200px;
   width: 100%;
 }
 
-.automotive-diagram-section,
-.automotive-module-section,
-.automotive-issue-section {
+.automotive-diagram-section {
   background: #ffffff;
   border: 1px solid rgba(23, 33, 31, 0.1);
   border-radius: 8px;
@@ -2970,6 +2966,55 @@ body.details-open {
   display: grid;
   gap: 16px;
   padding: clamp(16px, 3vw, 26px);
+}
+
+.automotive-module-controls {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.automotive-module-controls button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(31, 117, 105, 0.3);
+  border-radius: 8px;
+  color: #1f7569;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 780;
+  justify-content: center;
+  line-height: 1.35;
+  min-height: 42px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 8px 10px;
+  text-align: center;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.automotive-module-controls button:hover {
+  background: #eef7f4;
+  border-color: #1f7569;
+}
+
+.automotive-module-controls button:focus-visible {
+  box-shadow: 0 0 0 3px rgba(31, 117, 105, 0.2);
+  outline: 2px solid #1f7569;
+  outline-offset: 2px;
+}
+
+.automotive-module-controls button[aria-pressed="true"] {
+  background: #1f7569;
+  border-color: #1f7569;
+  color: #ffffff;
+}
+
+.automotive-module-controls button[aria-pressed="true"]:hover {
+  background: #185e55;
+  border-color: #185e55;
 }
 
 .automotive-diagram {
@@ -2984,6 +3029,7 @@ body.details-open {
   border-radius: 8px;
   display: block;
   height: auto;
+  min-width: 0;
   width: 100%;
 }
 
@@ -2998,39 +3044,70 @@ body.details-open {
   fill: #f7faf8;
 }
 
-.auto-diagram-title {
-  fill: #17211f;
-  font-size: 19px;
-  font-weight: 820;
+.auto-orientation-label {
+  fill: #62716d;
+  font-size: 13px;
+  font-weight: 780;
 }
 
 .auto-body {
-  fill: #dcece8;
-  stroke: rgba(23, 33, 31, 0.42);
+  fill: #d7e5e1;
+  stroke: #65736f;
+  stroke-width: 2.5;
+}
+
+.auto-external-wheel {
+  fill: #26302e;
+  stroke: #121817;
   stroke-width: 2;
 }
 
 .auto-window {
-  fill: rgba(255, 255, 255, 0.58);
-  stroke: rgba(31, 117, 105, 0.24);
+  fill: #b9ced0;
+  stroke: #6f8989;
+  stroke-width: 1.8;
+}
+
+.auto-windshield-front {
+  fill: #aec8ca;
+}
+
+.auto-windshield-rear {
+  fill: #c3d5d4;
+}
+
+.auto-door-seam {
+  fill: none;
+  stroke: rgba(75, 91, 87, 0.48);
+  stroke-linecap: round;
   stroke-width: 1.5;
 }
 
 .auto-console {
-  fill: rgba(23, 33, 31, 0.12);
+  fill: #91a39f;
+  stroke: #6d817c;
+  stroke-width: 1.5;
 }
 
-.auto-wheel {
+.auto-steering-wheel {
   fill: none;
-  stroke: rgba(23, 33, 31, 0.55);
-  stroke-width: 8;
+  stroke: #394642;
+  stroke-width: 6;
+}
+
+.auto-steering-hub {
+  fill: #394642;
 }
 
 .auto-seat-back,
 .auto-seat-base {
-  fill: #ffffff;
-  stroke: rgba(31, 117, 105, 0.18);
+  fill: #f8faf9;
+  stroke: rgba(74, 98, 92, 0.32);
   stroke-width: 1.5;
+}
+
+.auto-seat-base {
+  fill: #edf3f1;
 }
 
 .auto-seat-label {
@@ -3063,6 +3140,20 @@ body.details-open {
   stroke-width: 3;
 }
 
+.auto-talker {
+  fill: #b44c6d;
+  opacity: 0.82;
+  stroke: #ffffff;
+  stroke-width: 3;
+}
+
+.auto-target-seat {
+  fill: rgba(31, 117, 105, 0.08);
+  stroke: #1f7569;
+  stroke-dasharray: 7 6;
+  stroke-width: 2.5;
+}
+
 .auto-localization-beam,
 .auto-arrow {
   fill: none;
@@ -3073,10 +3164,6 @@ body.details-open {
 
 .auto-localization-beam {
   stroke-dasharray: 7 7;
-}
-
-.auto-localization-beam.rear {
-  stroke: #4f7cbd;
 }
 
 .auto-voice-arrow {
@@ -3092,6 +3179,11 @@ body.details-open {
 .auto-anc-panel,
 .auto-noise-chip {
   stroke-width: 1.4;
+}
+
+.auto-chip {
+  fill: #eef7f4;
+  stroke: rgba(31, 117, 105, 0.3);
 }
 
 .auto-chip.localization {
@@ -3140,22 +3232,6 @@ body.details-open {
   stroke-width: 3;
 }
 
-.auto-component-label {
-  fill: #e8f4f1;
-  stroke: rgba(31, 117, 105, 0.26);
-  stroke-width: 1.2;
-}
-
-.auto-component-label.speaker-label {
-  fill: #fff7ea;
-  stroke: rgba(196, 111, 42, 0.28);
-}
-
-.auto-component-label.anc-label {
-  fill: #eef2ff;
-  stroke: rgba(79, 124, 189, 0.28);
-}
-
 .auto-component-text {
   fill: #17211f;
   font-size: 12px;
@@ -3200,81 +3276,59 @@ body.details-open {
   font-weight: 820;
 }
 
-.auto-legend {
-  fill: #51615d;
-  font-size: 13px;
-  font-weight: 720;
+.automotive-diagram [data-module] {
+  animation: automotive-module-enter 180ms ease-out both;
 }
 
-.automotive-section-heading {
+@keyframes automotive-module-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.automotive-module-panel {
+  border-top: 1px solid rgba(23, 33, 31, 0.12);
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.automotive-module-panel h2 {
+  color: #17211f;
+  font-size: 1.18rem;
+  line-height: 1.35;
+  margin: 8px 0 14px;
+}
+
+.automotive-module-panel dl {
   display: grid;
-  gap: 6px;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
 }
 
-.automotive-section-heading span {
+.automotive-module-panel dl > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.automotive-module-panel dt {
   color: #1f7569;
   font-size: 0.78rem;
   font-weight: 820;
-}
-
-.automotive-section-heading h2 {
-  color: #17211f;
-  font-size: clamp(1.15rem, 2vw, 1.5rem);
   margin: 0;
 }
 
-.automotive-module-grid,
-.automotive-issue-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.automotive-module-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.automotive-issue-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.automotive-module-card,
-.automotive-issue-card {
-  background: #f7faf8;
-  border: 1px solid rgba(31, 117, 105, 0.12);
-  border-radius: 8px;
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-  padding: 14px;
-}
-
-.automotive-module-card h3,
-.automotive-issue-card h3 {
-  color: #17211f;
-  font-size: 1rem;
-  line-height: 1.35;
-  margin: 0;
-}
-
-.automotive-module-card p,
-.automotive-issue-card p {
+.automotive-module-panel dd {
   color: #3f4d49;
   font-size: 0.92rem;
   line-height: 1.65;
   margin: 0;
-}
-
-.automotive-issue-card ol {
-  display: grid;
-  gap: 7px;
-  margin: 0;
-  padding-left: 20px;
-}
-
-.automotive-issue-card li {
-  color: #3f4d49;
-  font-size: 0.9rem;
-  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .iot-content-lab-page {
@@ -6616,8 +6670,6 @@ body.details-open {
   .ai-article-body,
   .meeting-module-grid,
   .meeting-issue-grid,
-  .automotive-module-grid,
-  .automotive-issue-grid,
   .iot-content-module-grid,
   .iot-content-issue-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6781,6 +6833,30 @@ body.details-open {
   }
 }
 
+@media (max-width: 720px) {
+  .automotive-module-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .automotive-diagram {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .automotive-diagram svg {
+    min-width: 720px;
+  }
+
+  .automotive-diagram figcaption {
+    position: sticky;
+    left: 0;
+  }
+
+  .automotive-module-panel dl {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 620px) {
   .header-actions {
     align-items: stretch;
@@ -6844,8 +6920,6 @@ body.details-open {
   .ai-article-body,
   .meeting-module-grid,
   .meeting-issue-grid,
-  .automotive-module-grid,
-  .automotive-issue-grid,
   .iot-content-module-grid,
   .iot-content-issue-grid,
   .spatial-pipeline,
@@ -6880,5 +6954,9 @@ body.details-open {
 
   .background-wave {
     opacity: 0.35;
+  }
+
+  .automotive-module-controls button {
+    transition: none;
   }
 }
