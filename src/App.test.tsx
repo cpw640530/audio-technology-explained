@@ -245,8 +245,8 @@ describe("Audio knowledge app", () => {
     await user.click(screen.getByRole("button", { name: /车载声学/ }));
 
     const details = screen.getByRole("dialog", { name: "主题详情" });
-    expect(within(details).getByText(/车载声学不是只讲听歌/)).toBeInTheDocument();
-    expect(within(details).getByText(/主动降噪通常针对低频发动机噪声、胎噪和路噪/)).toBeInTheDocument();
+    expect(within(details).getByText(/采集与定位、语音理解、回放与空间渲染、噪声控制/)).toBeInTheDocument();
+    expect(within(details).getByText(/ANC \/ RNC 是闭环低频噪声控制/)).toBeInTheDocument();
     expect(within(details).getByRole("button", { name: "打开车载声学实验室" })).toBeInTheDocument();
 
     await user.click(within(details).getByRole("button", { name: "打开车载声学实验室" }));
@@ -267,6 +267,14 @@ describe("Audio knowledge app", () => {
 
     const cabinImage = within(lab).getByRole("img", { name: "车载声学座舱部件位置图" });
     expect(cabinImage).toBeInTheDocument();
+    type OverlayModule = "layout" | "voice" | "localization" | "spatial" | "anc";
+    const expectActiveOverlay = (activeModule: OverlayModule) => {
+      const overlays = cabinImage.querySelectorAll("[data-module]");
+      expect(cabinImage).toHaveAttribute("data-active-module", activeModule);
+      expect(overlays).toHaveLength(1);
+      expect(overlays[0]).toHaveAttribute("data-module", activeModule);
+    };
+    expectActiveOverlay("layout");
     expect(within(cabinImage).getByText("顶灯麦克风阵列")).toBeInTheDocument();
     expect(within(cabinImage).getByText("门板扬声器")).toBeInTheDocument();
     expect(within(cabinImage).getByText("中置扬声器")).toBeInTheDocument();
@@ -276,6 +284,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByRole("heading", { name: "整车声学布局" })).toBeInTheDocument();
 
     await user.click(voiceModule);
+    expectActiveOverlay("voice");
     expect(voiceModule).toHaveAttribute("aria-pressed", "true");
     expect(layoutModule).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).queryByRole("heading", { name: "整车声学布局" })).not.toBeInTheDocument();
@@ -283,6 +292,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText(/AEC.*降噪.*波束形成/)).toBeInTheDocument();
 
     await user.click(localizationModule);
+    expectActiveOverlay("localization");
     expect(localizationModule).toHaveAttribute("aria-pressed", "true");
     expect(voiceModule).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).queryByRole("heading", { name: "从一句话到车辆动作" })).not.toBeInTheDocument();
@@ -291,6 +301,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText(/波束形成负责增强目标方向/)).toBeInTheDocument();
 
     await user.click(spatialAudioModule);
+    expectActiveOverlay("spatial");
     expect(spatialAudioModule).toHaveAttribute("aria-pressed", "true");
     expect(localizationModule).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).queryByText("Δt = d sin(θ) / c")).not.toBeInTheDocument();
@@ -298,6 +309,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText(/安全告警优先于娱乐声场/)).toBeInTheDocument();
 
     await user.click(noiseCancellationModule);
+    expectActiveOverlay("anc");
     expect(noiseCancellationModule).toHaveAttribute("aria-pressed", "true");
     expect(spatialAudioModule).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).queryByRole("heading", { name: "让每类声音出现在合适方向" })).not.toBeInTheDocument();

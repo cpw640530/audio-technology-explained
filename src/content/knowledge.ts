@@ -2050,18 +2050,19 @@ export const categories: Category[] = [
       {
         title: { zh: "车载声学", en: "In-Car Acoustics" },
         summary: {
-          zh: "关注车内麦克风、扬声器、语音助手、声源定位、座舱空间音频和主动降噪。",
-          en: "Focus on cabin microphones, speakers, voice assistants, localization, spatial audio, and active noise control."
+          zh: "从座舱采集与定位到语音决策、空间回放和闭环噪声控制，理解车载声学的完整链路。",
+          en: "Understand the complete in-car acoustic chain, from cabin capture and localization to voice decisions, spatial playback, and closed-loop noise control."
         },
         bullets: [
-          { zh: "车载语音交互", en: "In-car voice interaction" },
-          { zh: "声源定位与分区拾音", en: "Localization and zone pickup" },
-          { zh: "座舱空间音频与 ANC", en: "Cabin spatial audio and ANC" }
+          { zh: "麦克风阵列、分区定位与波束形成", en: "Microphone arrays, zone localization, and beamforming" },
+          { zh: "语音理解与车辆安全策略", en: "Speech understanding and vehicle safety policy" },
+          { zh: "多扬声器空间渲染与告警优先级", en: "Multi-speaker spatial rendering and alert priority" },
+          { zh: "ANC / RNC 闭环低频噪声控制", en: "ANC / RNC closed-loop low-frequency noise control" }
         ],
         detail: {
           explanation: {
-            zh: "车载声学不是只讲听歌，而是把车内麦克风、扬声器、功放、Codec/DSP、语音助手、声源定位、免提通话、主动降噪和安全提示整合到同一套座舱声学系统。车载语音助手通常从顶灯、后视镜或车顶麦克风阵列采集语音，经过唤醒词、ASR、NLU/LLM 和车辆控制策略，再通过扬声器给出语音反馈。声源定位要判断谁在说、坐在哪个座位、是否在对车辆下指令；座舱空间音频要根据扬声器位置、座位补偿和安全优先级渲染音乐、导航与提示音。主动降噪通常针对低频发动机噪声、胎噪和路噪，用参考传感器或车内误差麦估计噪声，再通过扬声器播放反相信号降低乘员听到的噪声。",
-            en: "In-car acoustics is not only about music playback. It combines cabin microphones, speakers, amplifiers, Codec/DSP, voice assistants, localization, hands-free calling, active noise control, and safety alerts into one acoustic system. A vehicle voice assistant usually captures speech from overhead, mirror, or roof microphone arrays, then passes through wake word, ASR, NLU/LLM, and vehicle-control policy before responding through speakers. Localization decides who is speaking, which seat they occupy, and whether they are addressing the car. Cabin spatial audio renders music, navigation, and alerts according to speaker positions, seat compensation, and safety priority. Active noise cancellation usually targets low-frequency engine, tire, and road noise by estimating noise through reference sensors or in-cabin error microphones and playing anti-phase sound through speakers."
+            zh: "车载声学把采集与定位、语音理解、回放与空间渲染、噪声控制连接成同一套座舱系统。麦克风阵列先采集乘员语音，通过通道间时间差和相位差定位说话座位，再用波束形成增强目标方向；AEC 和降噪抑制扬声器回放、路噪与空调声。随后唤醒词、ASR 和意图理解把语音变成候选动作，车辆还要结合车速、驾驶状态、座位权限和安全策略决定是否执行。播放侧通过多扬声器、功放、延迟、EQ 和相位校准渲染音乐、导航、告警与语音反馈。ANC / RNC 是闭环低频噪声控制：控制器根据参考信号预测发动机、轮胎或路面噪声，经扬声器产生反相信号，再由误差麦反馈修正。",
+            en: "In-car acoustics connects capture and localization, speech understanding, playback and spatial rendering, and noise control into one cabin system. Microphone arrays first capture occupant speech, use interchannel time and phase differences to locate the speaking seat, and then apply beamforming to enhance the target direction; AEC and noise suppression reduce loudspeaker playback leakage, road noise, and HVAC noise. Wake-word detection, ASR, and intent understanding then turn speech into candidate actions, while the vehicle considers speed, driving state, seat permissions, and safety policies before deciding whether to execute them. On the playback side, multiple speakers, amplifiers, delay, EQ, and phase calibration render music, navigation, alerts, and voice feedback. ANC / RNC is closed-loop low-frequency noise control: the controller uses reference signals to predict engine, tire, or road noise, drives the speakers to produce an anti-phase signal, and then corrects its output using feedback from error microphones."
           },
           lab: {
             type: "automotive-audio",
@@ -2073,18 +2074,18 @@ export const categories: Category[] = [
             buttonLabel: { zh: "打开车载声学实验室", en: "Open in-car acoustics lab" }
           },
           keyConcepts: [
-            { zh: "麦克风常见位置包括顶灯/车顶、内后视镜、中控、头枕或 B 柱；位置越接近目标乘员，拾音越直接，但整车布线、外观和风噪也更难处理。", en: "Common microphone locations include overhead lamp/roof, mirror, console, headrest, and B-pillar. Closer placement gives more direct pickup but complicates wiring, styling, and wind-noise handling." },
-            { zh: "扬声器常见位置包括仪表台中置、A 柱高音、门板中低音、后门/后环绕和低音炮；空间音频依赖正确的声道映射、延迟、EQ、相位和座位补偿。", en: "Common speaker locations include center dash, A-pillar tweeters, door mid-woofers, rear surrounds, and subwoofers. Spatial audio depends on correct channel mapping, delay, EQ, phase, and seat compensation." },
-            { zh: "语音助手链路通常是唤醒词 -> ASR -> NLU/LLM -> 车辆控制 / 语音反馈，但车速、驾驶状态、座位权限和安全策略会限制能执行的动作。", en: "A voice-assistant chain is usually wake word -> ASR -> NLU/LLM -> vehicle control / voice response, while speed, driving state, seat permission, and safety policy constrain executable actions." },
-            { zh: "主动降噪 ANC/RNC 不是把音乐变小，而是用反相信号抵消低频噪声；它更擅长稳定低频，对高频、人声和突发声通常不适合强行抵消。", en: "ANC/RNC does not simply lower music volume. It cancels low-frequency noise with anti-phase sound; it works best on stable low frequencies and is usually unsuitable for aggressive cancellation of high frequencies, speech, or transients." }
+            { zh: "麦克风阵列利用通道间时间差和相位差估计声源方向与座位分区；定位回答“声音来自哪里”，波束形成则是朝该方向增强、抑制其他方向的空间滤波，两者不能混为同一步。", en: "A microphone array uses interchannel time and phase differences to estimate source direction and seat zone. Localization answers where the sound comes from, while beamforming spatially enhances that direction and suppresses others; they are distinct operations." },
+            { zh: "语音助手用唤醒词启动交互，ASR 转写内容，意图理解生成候选动作；车速、驾驶状态、座位权限与安全策略再决定动作能否执行。", en: "A voice assistant starts interaction with a wake word, uses ASR to transcribe speech, and derives a candidate action through intent understanding; speed, driving state, seat permissions, and safety policy then determine whether that action may execute." },
+            { zh: "回放系统通过多扬声器与功放分配声道，并用延迟、EQ 和相位校准塑造座位声场；导航与安全告警必须按优先级压过或避让娱乐内容。", en: "The playback system distributes channels across multiple speakers and amplifiers, then shapes each seating sound field with delay, EQ, and phase calibration. Navigation and safety alerts must override or duck entertainment content according to priority." },
+            { zh: "ANC / RNC 的闭环由参考信号、控制器、扬声器和误差麦组成，反馈用于持续修正残余噪声；它适合可预测、稳定的低频成分，不适合强行抵消高频、人声或突发声。", en: "The ANC / RNC loop consists of a reference signal, controller, speakers, and error microphones, whose feedback continuously corrects residual noise. It is suited to predictable, stable low-frequency components, not aggressive cancellation of high frequencies, speech, or transients." }
           ],
           misconception: {
-            zh: "车载声学不能只看某一个麦克风或某一个扬声器。车内空间很小、反射强、噪声源多，语音、音乐、导航、告警和主动降噪会互相影响。",
-            en: "In-car acoustics cannot be judged from one microphone or one speaker. The cabin is small, reflective, and noisy, so voice, music, navigation, alerts, and ANC interact with one another."
+            zh: "把每个模块单独调通不代表整车体验已经成立：定位错误会把语音交给错误座位，回放泄漏会影响拾音，而不稳定的 ANC 参数还可能放大残余噪声。",
+            en: "Making each module work in isolation does not guarantee a correct vehicle experience: localization errors can assign speech to the wrong seat, playback leakage can impair capture, and unstable ANC tuning can amplify residual noise."
           },
           contentDirection: {
-            zh: "重点用车内饰部件位置图展示麦克风、扬声器、座位、声源定位、语音助手、座舱空间音频和 ANC 之间的关系，并按“唤醒错人、定位漂移、ANC 压耳或轰鸣”做问题诊断。",
-            en: "Focus on a cabin component layout showing microphones, speakers, seats, localization, voice assistants, spatial audio, and ANC, then diagnose wrong wake owner, localization drift, and ANC pressure or rumble."
+            zh: "诊断时先判断问题属于拾音定位、语音决策、回放渲染还是噪声控制，再沿对应信号链检查唤醒错座、定位漂移、告警遮蔽或 ANC 轰鸣。",
+            en: "When diagnosing an issue, first determine whether it belongs to capture and localization, voice decision-making, playback rendering, or noise control, then follow the corresponding signal chain to investigate wrong-seat wakeups, localization drift, masked alerts, or ANC rumble."
           }
         }
       },
