@@ -227,22 +227,34 @@ describe("Audio knowledge app", () => {
     const liveCaptions = within(lab).getByRole("button", { name: "实时字幕" });
 
     expect(personalDevice).toHaveAttribute("aria-pressed", "true");
+    expect(meetingRoom).toHaveAttribute("aria-pressed", "false");
+    expect(poorNetwork).toHaveAttribute("aria-pressed", "false");
+    expect(liveCaptions).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).getByRole("img", { name: "个人终端会议场景图" })).toBeInTheDocument();
     expect(within(lab).getByText("ERLE")).toBeInTheDocument();
 
     await user.click(meetingRoom);
+    expect(meetingRoom).toHaveAttribute("aria-pressed", "true");
+    expect(personalDevice).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).getByRole("img", { name: "多人会议室场景图" })).toBeInTheDocument();
+    expect(within(lab).queryByRole("img", { name: "个人终端会议场景图" })).not.toBeInTheDocument();
     expect(within(lab).getByText("麦克风阵列")).toBeInTheDocument();
     expect(within(lab).queryByText("耳机模式")).not.toBeInTheDocument();
 
     await user.click(poorNetwork);
+    expect(poorNetwork).toHaveAttribute("aria-pressed", "true");
+    expect(meetingRoom).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).getByRole("img", { name: "弱网会议场景图" })).toBeInTheDocument();
+    expect(within(lab).queryByRole("img", { name: "多人会议室场景图" })).not.toBeInTheDocument();
     expect(within(lab).getByText("Jitter Buffer")).toBeInTheDocument();
     expect(within(lab).getByText("PLC")).toBeInTheDocument();
     expect(within(lab).getByText("丢包率")).toBeInTheDocument();
 
     await user.click(liveCaptions);
+    expect(liveCaptions).toHaveAttribute("aria-pressed", "true");
+    expect(poorNetwork).toHaveAttribute("aria-pressed", "false");
     expect(within(lab).getByRole("img", { name: "实时字幕会议场景图" })).toBeInTheDocument();
+    expect(within(lab).queryByRole("img", { name: "弱网会议场景图" })).not.toBeInTheDocument();
     expect(within(lab).getByText("流式 ASR")).toBeInTheDocument();
     expect(within(lab).getByText("首字延迟")).toBeInTheDocument();
   });
