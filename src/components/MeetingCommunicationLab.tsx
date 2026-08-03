@@ -32,12 +32,12 @@ const scenarios: Record<ScenarioId, Scenario> = {
     action: t("用户用笔记本或手机的内置麦克风和扬声器参加远程会议。", "A user joins a remote meeting on a laptop or phone using its built-in microphone and speaker."),
     expected: t("近端和远端可以自然双讲，远端不会听到自己的回声。", "Near- and far-end participants can double-talk naturally without the remote participant hearing an echo."),
     risk: t("扬声器声音经桌面和墙面反射回到麦克风；音量变化和双讲会让回声更难消除。", "Speaker audio can reflect from the desk and walls into the microphone; level changes and double-talk make cancellation harder."),
-    modules: [t("AEC", "AEC"), t("双讲检测", "Double-talk detection"), t("NS", "NS"), t("AGC", "AGC"), t("耳机模式", "Headset mode")],
-    metrics: [t("ERLE", "ERLE"), t("回声残留", "Residual echo"), t("近端语音保真度", "Near-end speech fidelity")],
-    checks: [t("确认扬声器回采参考进入 AEC。", "Confirm the speaker render reference reaches AEC."), t("检查参考与麦克风信号是否对齐。", "Check alignment between reference and microphone audio."), t("在双讲时检查近端语音是否被误抑制。", "Check whether near-end speech is over-suppressed during double-talk.")],
+    modules: [t("AEC", "AEC"), t("双讲检测", "Double-talk detection"), t("NS / ANR", "NS / ANR"), t("AGC", "AGC"), t("耳机模式", "Headset mode")],
+    metrics: [t("ERLE", "ERLE"), t("端到端延迟", "End-to-end latency"), t("输入峰值", "Input peak"), t("双讲保留率", "Double-talk retention")],
+    checks: [t("确认扬声器回采参考进入 AEC。", "Confirm the speaker render reference reaches AEC."), t("检查参考与麦克风信号是否对齐。", "Check alignment between reference and microphone audio."), t("检查双讲保留，再核对扬声器音量和处理强度。", "Check double-talk retention, then verify speaker volume and processing strength.")],
     chain: [
       { kind: "capture", label: t("内置麦克风", "Built-in mic") },
-      { kind: "process", label: t("AEC / 双讲 / NS / AGC", "AEC / double-talk / NS / AGC") },
+      { kind: "process", label: t("AEC / 双讲 / NS / ANR / AGC", "AEC / double-talk / NS / ANR / AGC") },
       { kind: "network", label: t("实时传输", "Real-time transport") },
       { kind: "playback", label: t("远端参与者", "Remote participant") }
     ]
@@ -48,12 +48,12 @@ const scenarios: Record<ScenarioId, Scenario> = {
     action: t("三名以上参会者围桌讨论，通过中央阵列与远端会场沟通。", "Three or more participants discuss around a table through a central array and far-end display."),
     expected: t("阵列持续对准当前说话人，远近座位的语音都清晰稳定。", "The array tracks the active talker and keeps speech clear from both near and distant seats."),
     risk: t("多人位置、扬声器回放和房间多次反射会扩散声源并加重混响。", "Multiple talker positions, speaker playback, and repeated room reflections spread sources and increase reverberation."),
-    modules: [t("麦克风阵列", "Microphone array"), t("波束拾音", "Beam pickup"), t("AEC", "AEC"), t("去混响", "Dereverberation")],
-    metrics: [t("拾音覆盖率", "Pickup coverage"), t("直达混响比", "Direct-to-reverberant ratio"), t("远端回声残留", "Far-end echo residue")],
-    checks: [t("确认各阵元工作且通道增益一致。", "Confirm every array element works with matched channel gain."), t("观察拾音波束是否指向当前说话人。", "Observe whether the pickup beam points at the active talker."), t("检查扬声器位置与主要反射路径。", "Inspect speaker placement and dominant reflection paths.")],
+    modules: [t("麦克风阵列", "Microphone array"), t("波束拾音", "Beam pickup"), t("多人发言处理", "Multi-speaker processing"), t("AEC", "AEC"), t("去混响", "Dereverberation")],
+    metrics: [t("拾音距离", "Pickup distance"), t("混响时间", "Reverberation time"), t("阵列方向", "Array direction"), t("近远端电平差", "Near/far level difference")],
+    checks: [t("确认各阵元工作且通道增益一致。", "Confirm every array element works with matched channel gain."), t("观察阵列方向与多人发言切换。", "Observe array direction and multi-speaker switching."), t("最后检查 AEC 与去混响效果。", "Finally check AEC and dereverberation performance.")],
     chain: [
       { kind: "capture", label: t("中央阵列拾音", "Central array pickup") },
-      { kind: "process", label: t("波束形成 / 去混响", "Beamforming / dereverb") },
+      { kind: "process", label: t("波束形成 / 多人发言 / 去混响", "Beamforming / multi-speaker / dereverb") },
       { kind: "process", label: t("AEC", "AEC") },
       { kind: "network", label: t("会议传输", "Conference transport") },
       { kind: "playback", label: t("远端会场", "Far-end room") }
@@ -65,12 +65,12 @@ const scenarios: Record<ScenarioId, Scenario> = {
     action: t("本地与远端端点在延迟抖动和偶发丢包的网络上持续通话。", "Local and remote endpoints continue a call over a network with jitter and occasional packet loss."),
     expected: t("短时抖动和单个丢包不会造成明显停顿，播放延迟保持可控。", "Brief jitter and an isolated missing packet do not cause obvious gaps, while playout delay stays controlled."),
     risk: t("包间隔不均或连续丢包会造成缓冲欠载、卡顿和延迟累积。", "Uneven packet spacing or burst loss can cause buffer underruns, dropouts, and accumulated latency."),
-    modules: [t("Opus", "Opus"), t("RTP", "RTP"), t("FEC", "FEC"), t("Jitter Buffer", "Jitter Buffer"), t("PLC", "PLC")],
-    metrics: [t("丢包率", "Packet loss rate"), t("到达抖动", "Arrival jitter"), t("播放缓冲深度", "Playout buffer depth")],
-    checks: [t("先区分网络丢包与接收端晚到包。", "First distinguish network loss from packets arriving too late."), t("检查抖动缓冲目标延迟与实际深度。", "Check jitter-buffer target delay against actual depth."), t("确认 FEC 恢复与 PLC 补偿是否连续生效。", "Confirm FEC recovery and PLC concealment operate continuously.")],
+    modules: [t("Opus", "Opus"), t("RTP", "RTP"), t("FEC", "FEC"), t("Jitter Buffer", "Jitter Buffer"), t("PLC", "PLC"), t("自适应码率", "Adaptive bitrate")],
+    metrics: [t("丢包率", "Packet loss rate"), t("到达抖动", "Arrival jitter"), t("RTT", "RTT"), t("PLC 触发率", "PLC trigger rate")],
+    checks: [t("先对比原始采集，区分采集异常与网络损伤。", "First compare raw capture to distinguish capture faults from network damage."), t("检查丢包、RTT、抖动与 PLC 触发。", "Check loss, RTT, jitter, and PLC triggers."), t("最后调整缓冲、FEC 和码率。", "Finally tune buffering, FEC, and bitrate.")],
     chain: [
       { kind: "capture", label: t("本地端点", "Local endpoint") },
-      { kind: "process", label: t("Opus 编码", "Opus encode") },
+      { kind: "process", label: t("Opus / 自适应码率", "Opus / adaptive bitrate") },
       { kind: "network", label: t("RTP / FEC / 抖动与丢包", "RTP / FEC / jitter and loss") },
       { kind: "process", label: t("Jitter Buffer / PLC", "Jitter Buffer / PLC") },
       { kind: "playback", label: t("远端端点", "Remote endpoint") }
@@ -82,13 +82,13 @@ const scenarios: Record<ScenarioId, Scenario> = {
     action: t("参会者正常通话，同时查看增量更新的字幕，并可选开启翻译。", "Participants talk normally while reading incrementally updated captions with optional translation."),
     expected: t("首字快速出现，后续文字稳定增量更新，字幕不会阻塞主音频链路。", "The first words appear quickly, later text updates incrementally, and captions never block the main audio path."),
     risk: t("端点等待、识别推理、翻译和 UI 稳定策略会叠加字幕延迟。", "Endpointing, recognition inference, translation, and UI stabilization can add up to caption latency."),
-    modules: [t("流式 ASR", "Streaming ASR"), t("增量字幕", "Incremental captions"), t("可选翻译", "Optional translation"), t("字幕 UI", "Caption UI")],
-    metrics: [t("首字延迟", "First-token latency"), t("增量稳定时间", "Partial stabilization time"), t("字错率", "Word error rate")],
-    checks: [t("分别测量增强 PCM 到 ASR 与 ASR 到 UI 的延迟。", "Measure enhanced-PCM-to-ASR and ASR-to-UI latency separately."), t("检查流式结果是否及时增量提交。", "Check that streaming results are committed incrementally."), t("关闭翻译比较首字延迟，定位旁路瓶颈。", "Disable translation and compare first-token latency to locate the side-path bottleneck.")],
+    modules: [t("流式 ASR", "Streaming ASR"), t("端点检测", "Endpoint detection"), t("增量字幕", "Incremental captions"), t("字幕稳定", "Caption stabilization"), t("可选翻译", "Optional translation")],
+    metrics: [t("首字延迟", "First-token latency"), t("最终结果延迟", "Final-result latency"), t("修订次数", "Revision count"), t("字错率", "Word error rate")],
+    checks: [t("先检查增强后音频的清晰度和完整性。", "First check enhanced-audio clarity and completeness."), t("再区分网络传输延迟与模型推理延迟。", "Then distinguish network delay from inference delay."), t("最后检查端点检测和字幕稳定策略。", "Finally check endpoint detection and caption stabilization.")],
     chain: [
       { kind: "capture", label: t("增强后 PCM", "Enhanced PCM") },
-      { kind: "recognition", label: t("流式识别", "Streaming recognition") },
-      { kind: "recognition", label: t("增量文字", "Incremental text") },
+      { kind: "recognition", label: t("端点检测 / 流式识别", "Endpointing / streaming recognition") },
+      { kind: "recognition", label: t("增量文字 / 字幕稳定", "Incremental text / caption stabilization") },
       { kind: "process", label: t("可选翻译", "Optional translation") },
       { kind: "playback", label: t("字幕界面", "Caption UI") }
     ]
@@ -124,7 +124,9 @@ function ScenarioScene({ id, language }: { id: ScenarioId; language: Language })
       <rect className="meeting-box capture" x="245" y="246" width="72" height="36" rx="8" /><text className="meeting-box-sub" x="281" y="269" textAnchor="middle">{zh ? "内置麦克风" : "Mic"}</text>
       <rect className="meeting-box remote" x="700" y="150" width="190" height="120" rx="12" /><text className="meeting-box-title" x="795" y="202" textAnchor="middle">{zh ? "远端参与者" : "Remote participant"}</text><text className="meeting-box-sub" x="795" y="228" textAnchor="middle">{zh ? "听到本地语音" : "Hears local speech"}</text>
       <path className="meeting-arrow" d="M340 206 H690" markerEnd="url(#scene-arrow)" /><text className="meeting-reference-text" x="515" y="190" textAnchor="middle">{zh ? "会议网络" : "Meeting network"}</text>
-      <path className="meeting-echo-arrow" d="M282 184 C410 70 420 345 282 282" fill="none" markerEnd="url(#scene-risk-arrow)" /><text className="meeting-reference-text" x="445" y="322" textAnchor="middle">{zh ? "扬声器到麦克风的回声路径" : "Speaker-to-mic echo path"}</text>
+      <rect className="meeting-box process" x="500" y="245" width="120" height="54" rx="8" /><text className="meeting-box-title" x="560" y="278" textAnchor="middle">AEC</text>
+      <path className="meeting-arrow" d="M317 205 C390 205 415 272 490 272" fill="none" strokeDasharray="7 6" markerEnd="url(#scene-arrow)" /><text className="meeting-reference-text" x="410" y="236" textAnchor="middle">{zh ? "播放参考 → AEC" : "Render reference → AEC"}</text>
+      <path className="meeting-echo-arrow" d="M282 226 C390 350 410 350 282 282" fill="none" markerEnd="url(#scene-risk-arrow)" /><text className="meeting-reference-text" x="445" y="370" textAnchor="middle">{zh ? "扬声器到麦克风的回声路径" : "Speaker-to-mic echo path"}</text>
     </SceneFrame>
   );
   if (id === "room") return (

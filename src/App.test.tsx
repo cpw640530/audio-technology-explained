@@ -230,8 +230,11 @@ describe("Audio knowledge app", () => {
     expect(meetingRoom).toHaveAttribute("aria-pressed", "false");
     expect(poorNetwork).toHaveAttribute("aria-pressed", "false");
     expect(liveCaptions).toHaveAttribute("aria-pressed", "false");
-    expect(within(lab).getByRole("img", { name: "个人终端会议场景图" })).toBeInTheDocument();
+    const personalScene = within(lab).getByRole("img", { name: "个人终端会议场景图" });
+    expect(personalScene).toBeInTheDocument();
+    expect(within(personalScene).getByText("播放参考 → AEC")).toBeInTheDocument();
     expect(within(lab).getByText("ERLE")).toBeInTheDocument();
+    expect(within(lab).getByText("端到端延迟")).toBeInTheDocument();
 
     await user.click(meetingRoom);
     expect(meetingRoom).toHaveAttribute("aria-pressed", "true");
@@ -239,6 +242,8 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByRole("img", { name: "多人会议室场景图" })).toBeInTheDocument();
     expect(within(lab).queryByRole("img", { name: "个人终端会议场景图" })).not.toBeInTheDocument();
     expect(within(lab).getByText("麦克风阵列")).toBeInTheDocument();
+    expect(within(lab).getByText("多人发言处理")).toBeInTheDocument();
+    expect(within(lab).getByText("混响时间")).toBeInTheDocument();
     expect(within(lab).queryByText("耳机模式")).not.toBeInTheDocument();
 
     await user.click(poorNetwork);
@@ -249,6 +254,8 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText("Jitter Buffer")).toBeInTheDocument();
     expect(within(lab).getByText("PLC")).toBeInTheDocument();
     expect(within(lab).getByText("丢包率")).toBeInTheDocument();
+    expect(within(lab).getByText("自适应码率")).toBeInTheDocument();
+    expect(within(lab).getByText("RTT")).toBeInTheDocument();
 
     await user.click(liveCaptions);
     expect(liveCaptions).toHaveAttribute("aria-pressed", "true");
@@ -257,6 +264,8 @@ describe("Audio knowledge app", () => {
     expect(within(lab).queryByRole("img", { name: "弱网会议场景图" })).not.toBeInTheDocument();
     expect(within(lab).getByText("流式 ASR")).toBeInTheDocument();
     expect(within(lab).getByText("首字延迟")).toBeInTheDocument();
+    expect(within(lab).getByText("端点检测")).toBeInTheDocument();
+    expect(within(lab).getByText("最终结果延迟")).toBeInTheDocument();
   });
 
   it("labels conferencing and communication scenarios in English", async () => {
