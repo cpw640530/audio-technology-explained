@@ -217,7 +217,7 @@ export function MeetingCommunicationLab({ language, onBack }: MeetingCommunicati
 
       <section className="meeting-chain-section" aria-label={language === "zh" ? "场景链路" : "Scenario chain"}>
         <div className="meeting-section-heading"><span>{language === "zh" ? "信号流" : "Signal flow"}</span><h2>{language === "zh" ? "场景链路" : "Scenario chain"}</h2></div>
-        <div className="meeting-chain-list">{scenario.chain.map((node, index) => <article className={`meeting-chain-node ${node.kind}`} key={`${node.kind}-${node.label.en}`}><span className="meeting-chain-index">{index + 1}</span><h3>{node.label[language]}</h3><span className="meeting-chain-arrow" aria-hidden="true">→</span></article>)}</div>
+        <div className="meeting-chain-list">{scenario.chain.map((node, index) => <article className={`meeting-chain-node ${node.kind}`} key={`${node.kind}-${node.label.en}`}><span className="meeting-chain-index">{index + 1}</span><h3>{node.label[language]}</h3>{index < scenario.chain.length - 1 && <span className="meeting-chain-arrow" aria-hidden="true">→</span>}</article>)}</div>
       </section>
 
       <section className="meeting-engineering-section" aria-label={language === "zh" ? "工程信息" : "Engineering information"}>
