@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { MeetingCommunicationLab } from "./components/MeetingCommunicationLab";
 
 describe("Audio knowledge app", () => {
   beforeEach(() => {
@@ -232,7 +233,7 @@ describe("Audio knowledge app", () => {
     expect(liveCaptions).toHaveAttribute("aria-pressed", "false");
     const personalScene = within(lab).getByRole("img", { name: "个人终端会议场景图" });
     expect(personalScene).toBeInTheDocument();
-    expect(within(personalScene).getByText("播放参考 → AEC")).toBeInTheDocument();
+    expect(personalScene).toHaveAccessibleDescription(/播放参考信号进入 AEC/);
     expect(within(lab).getByText("ERLE")).toBeInTheDocument();
     expect(within(lab).getByText("端到端延迟")).toBeInTheDocument();
 
@@ -249,7 +250,8 @@ describe("Audio knowledge app", () => {
     await user.click(poorNetwork);
     expect(poorNetwork).toHaveAttribute("aria-pressed", "true");
     expect(meetingRoom).toHaveAttribute("aria-pressed", "false");
-    expect(within(lab).getByRole("img", { name: "弱网会议场景图" })).toBeInTheDocument();
+    const networkScene = within(lab).getByRole("img", { name: "弱网会议场景图" });
+    expect(networkScene).toHaveAccessibleDescription(/RTP 包.*自适应抖动缓冲.*FEC.*PLC.*播放/);
     expect(within(lab).queryByRole("img", { name: "多人会议室场景图" })).not.toBeInTheDocument();
     expect(within(lab).getByText("Jitter Buffer")).toBeInTheDocument();
     expect(within(lab).getByText("PLC")).toBeInTheDocument();
@@ -257,6 +259,14 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText("自适应码率")).toBeInTheDocument();
     expect(within(lab).getByText("RTT")).toBeInTheDocument();
     expect(within(lab).getByText("播放缓冲深度")).toBeInTheDocument();
+    const scenarioChain = within(lab).getByRole("region", { name: "场景链路" });
+    expect(within(scenarioChain).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Opus / 自适应码率",
+      "RTP 包",
+      "自适应抖动缓冲",
+      "FEC / PLC 解码决策",
+      "连续播放"
+    ]);
 
     await user.click(liveCaptions);
     expect(liveCaptions).toHaveAttribute("aria-pressed", "true");
@@ -286,6 +296,16 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByRole("button", { name: "Meeting room" })).toBeInTheDocument();
     expect(within(lab).getByRole("button", { name: "Poor network" })).toBeInTheDocument();
     expect(within(lab).getByRole("button", { name: "Live captions" })).toBeInTheDocument();
+
+    render(<MeetingCommunicationLab language="en" onBack={vi.fn()} />);
+    const personalScenes = screen.getAllByRole("img", { name: "Personal device meeting scene diagram" });
+    expect(personalScenes).toHaveLength(2);
+    expect(personalScenes[0]).toHaveAccessibleDescription(/render reference enters AEC/i);
+    const markerIds = personalScenes.map((scene) => scene.querySelector("marker")?.id);
+    expect(new Set(markerIds).size).toBe(2);
+    personalScenes.forEach((scene, index) => {
+      expect(scene.querySelector("[marker-end]")).toHaveAttribute("marker-end", `url(#${markerIds[index]})`);
+    });
   });
 
   it("expands in-car acoustics with cabin component layout and acoustic processing lab", async () => {
