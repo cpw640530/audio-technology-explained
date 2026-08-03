@@ -234,7 +234,8 @@ describe("Audio knowledge app", () => {
     expect(meetingRoom).toHaveAttribute("aria-pressed", "false");
     expect(poorNetwork).toHaveAttribute("aria-pressed", "false");
     expect(liveCaptions).toHaveAttribute("aria-pressed", "false");
-    expect(within(lab).getByRole("region", { name: "会议场景图滚动区域" })).toBeInTheDocument();
+    const sceneScrollRegion = within(lab).getByRole("region", { name: "会议场景图滚动区域" });
+    expect(sceneScrollRegion).toHaveAttribute("tabindex", "0");
     const personalScene = within(lab).getByRole("img", { name: "个人终端会议场景图" });
     expect(personalScene).toBeInTheDocument();
     expect(personalScene).toHaveAccessibleDescription(/播放参考信号进入 AEC/);
@@ -275,12 +276,24 @@ describe("Audio knowledge app", () => {
     await user.click(liveCaptions);
     expect(liveCaptions).toHaveAttribute("aria-pressed", "true");
     expect(poorNetwork).toHaveAttribute("aria-pressed", "false");
-    expect(within(lab).getByRole("img", { name: "实时字幕会议场景图" })).toBeInTheDocument();
+    const captionsScene = within(lab).getByRole("img", { name: "实时字幕会议场景图" });
+    expect(captionsScene).toHaveAccessibleDescription(/流式 ASR.*增量字幕.*字幕界面.*可选翻译分支/);
+    expect(captionsScene.querySelector('[data-caption-route="direct-asr-to-captions"]')).toBeInTheDocument();
+    expect(captionsScene.querySelector('[data-caption-route="optional-translation"]')).toBeInTheDocument();
     expect(within(lab).queryByRole("img", { name: "弱网会议场景图" })).not.toBeInTheDocument();
-    expect(within(lab).getByText("流式 ASR")).toBeInTheDocument();
     expect(within(lab).getByText("首字延迟")).toBeInTheDocument();
     expect(within(lab).getByText("端点检测")).toBeInTheDocument();
     expect(within(lab).getByText("最终结果延迟")).toBeInTheDocument();
+    expect(within(scenarioChain).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "增强后 PCM",
+      "流式 ASR",
+      "增量字幕",
+      "字幕界面"
+    ]);
+    expect(within(scenarioChain).getByRole("group", { name: "可选翻译分支" })).toHaveTextContent("可绕过直接字幕路径");
+    for (const label of ["流式 ASR", "增量字幕", "字幕界面"]) {
+      expect(within(scenarioChain).getByRole("heading", { name: label }).closest("article")).toHaveClass("recognition");
+    }
   });
 
   it("labels conferencing and communication scenarios in English", async () => {

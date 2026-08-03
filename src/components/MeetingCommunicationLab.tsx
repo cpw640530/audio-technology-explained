@@ -22,6 +22,7 @@ type Scenario = {
   metrics: LocalizedText[];
   checks: LocalizedText[];
   chain: Array<{ kind: ChainKind; label: LocalizedText }>;
+  optionalBranch?: { label: LocalizedText; nodeLabel: LocalizedText; note: LocalizedText };
 };
 
 const t = (zh: string, en: string): LocalizedText => ({ zh, en });
@@ -86,17 +87,21 @@ const scenarios: Record<ScenarioId, Scenario> = {
     action: t("参会者正常通话，同时查看增量更新的字幕，并可选开启翻译。", "Participants talk normally while reading incrementally updated captions with optional translation."),
     expected: t("首字快速出现，后续文字稳定增量更新，字幕不会阻塞主音频链路。", "The first words appear quickly, later text updates incrementally, and captions never block the main audio path."),
     risk: t("端点等待、识别推理、翻译和 UI 稳定策略会叠加字幕延迟。", "Endpointing, recognition inference, translation, and UI stabilization can add up to caption latency."),
-    sceneDescription: t("增强后的 PCM 保持主会议音频路径，同时分支到流式识别、可选翻译和字幕界面，字幕处理不会阻塞音频播放。", "Enhanced PCM remains on the main meeting-audio path while a side branch feeds streaming recognition, optional translation, and the caption UI without blocking playback."),
+    sceneDescription: t("增强后的 PCM 分支到字幕旁路，直接经过流式 ASR、增量字幕和字幕界面；可选翻译分支可以绕过，不会阻塞主音频或未翻译字幕。", "Enhanced PCM branches to a caption side path that directly runs through streaming ASR, incremental captions, and the caption UI. The optional translation branch is bypassable and blocks neither main audio nor untranslated captions."),
     modules: [t("流式 ASR", "Streaming ASR"), t("端点检测", "Endpoint detection"), t("增量字幕", "Incremental captions"), t("字幕稳定", "Caption stabilization"), t("可选翻译", "Optional translation")],
     metrics: [t("首字延迟", "First-token latency"), t("最终结果延迟", "Final-result latency"), t("修订次数", "Revision count"), t("字错率", "Word error rate")],
     checks: [t("先检查增强后音频的清晰度和完整性。", "First check enhanced-audio clarity and completeness."), t("再区分网络传输延迟与模型推理延迟。", "Then distinguish network delay from inference delay."), t("最后检查端点检测和字幕稳定策略。", "Finally check endpoint detection and caption stabilization.")],
     chain: [
       { kind: "capture", label: t("增强后 PCM", "Enhanced PCM") },
-      { kind: "recognition", label: t("端点检测 / 流式识别", "Endpointing / streaming recognition") },
-      { kind: "recognition", label: t("增量文字 / 字幕稳定", "Incremental text / caption stabilization") },
-      { kind: "process", label: t("可选翻译", "Optional translation") },
-      { kind: "playback", label: t("字幕界面", "Caption UI") }
-    ]
+      { kind: "recognition", label: t("流式 ASR", "Streaming ASR") },
+      { kind: "recognition", label: t("增量字幕", "Incremental captions") },
+      { kind: "recognition", label: t("字幕界面", "Caption UI") }
+    ],
+    optionalBranch: {
+      label: t("可选翻译分支", "Optional translation branch"),
+      nodeLabel: t("可选翻译", "Optional translation"),
+      note: t("可绕过直接字幕路径", "Bypassable from the direct caption path")
+    }
   }
 };
 
@@ -116,7 +121,7 @@ function SceneFrame({ name, description, scrollRegionLabel, arrowId, riskArrowId
   const titleId = `${accessibleId}-title`;
   const descriptionId = `${accessibleId}-description`;
   return (
-    <figure aria-label={scrollRegionLabel} className="meeting-scene-figure" role="region">
+    <figure aria-label={scrollRegionLabel} className="meeting-scene-figure" role="region" tabIndex={0}>
       <svg aria-labelledby={titleId} aria-describedby={descriptionId} role="img" viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg">
         <title id={titleId}>{name}</title>
         <desc id={descriptionId}>{description}</desc>
@@ -183,9 +188,13 @@ function ScenarioScene({ id, language }: { id: ScenarioId; language: Language })
       <text className="meeting-diagram-title" x="44" y="48">{zh ? "增强语音保持主链路，同时分支到字幕识别旁路" : "Enhanced speech stays on the main path and branches to caption recognition"}</text>
       <rect className="meeting-box capture" x="60" y="125" width="150" height="68" rx="10" /><text className="meeting-box-title" x="135" y="154" textAnchor="middle">{zh ? "增强后 PCM" : "Enhanced PCM"}</text><text className="meeting-box-sub" x="135" y="176" textAnchor="middle">{zh ? "清晰语音" : "Clean speech"}</text>
       <rect className="meeting-box playback" x="730" y="125" width="170" height="68" rx="10" /><text className="meeting-box-title" x="815" y="165" textAnchor="middle">{zh ? "主会议音频" : "Main meeting audio"}</text><path className="meeting-arrow" d="M210 159 H720" markerEnd={`url(#${arrowId})`} />
-      <path className="meeting-echo-arrow" d="M250 159 V260 H315" fill="none" markerEnd={`url(#${riskArrowId})`} /><text className="meeting-reference-text" x="250" y="240">{zh ? "字幕旁路" : "Caption side path"}</text>
-      {[{ x: 325, a: zh ? "流式识别" : "Streaming ASR", b: zh ? "增量结果" : "Partial results" }, { x: 515, a: zh ? "可选翻译" : "Optional translation", b: zh ? "可旁路" : "Can bypass" }, { x: 705, a: zh ? "字幕界面" : "Subtitle UI", b: zh ? "稳定出字" : "Stable text" }].map(({ x, a, b }) => <g key={x}><rect className="meeting-box caption" x={x} y="230" width="150" height="82" rx="10" /><text className="meeting-box-title" x={x + 75} y="264" textAnchor="middle">{a}</text><text className="meeting-box-sub" x={x + 75} y="288" textAnchor="middle">{b}</text></g>)}
-      <path className="meeting-arrow" d="M475 271 H505" markerEnd={`url(#${arrowId})`} /><path className="meeting-arrow" d="M665 271 H695" markerEnd={`url(#${arrowId})`} />
+      <path className="meeting-echo-arrow" d="M250 159 V260 H305" fill="none" markerEnd={`url(#${riskArrowId})`} /><text className="meeting-reference-text" x="250" y="240">{zh ? "字幕旁路" : "Caption side path"}</text>
+      {[{ x: 315, a: zh ? "流式 ASR" : "Streaming ASR", b: zh ? "增量识别" : "Partial recognition" }, { x: 515, a: zh ? "增量字幕" : "Incremental captions", b: zh ? "字幕稳定" : "Text stabilization" }, { x: 765, a: zh ? "字幕界面" : "Caption UI", b: zh ? "未翻译直达" : "Direct untranslated" }].map(({ x, a, b }) => <g key={x}><rect className="meeting-box caption" x={x} y="225" width="150" height="76" rx="10" /><text className="meeting-box-title" x={x + 75} y="256" textAnchor="middle">{a}</text><text className="meeting-box-sub" x={x + 75} y="280" textAnchor="middle">{b}</text></g>)}
+      <path className="meeting-arrow" d="M465 263 H505" markerEnd={`url(#${arrowId})`} />
+      <path className="meeting-arrow" d="M665 263 H755" data-caption-route="direct-asr-to-captions" markerEnd={`url(#${arrowId})`} />
+      <rect className="meeting-box process" x="515" y="330" width="150" height="58" rx="10" /><text className="meeting-box-title" x="590" y="354" textAnchor="middle">{zh ? "可选翻译" : "Optional translation"}</text><text className="meeting-box-sub" x="590" y="375" textAnchor="middle">{zh ? "可绕过" : "Bypassable"}</text>
+      <path className="meeting-echo-arrow" d="M465 275 C485 275 485 359 505 359" data-caption-route="optional-translation" markerEnd={`url(#${riskArrowId})`} />
+      <path className="meeting-echo-arrow" d="M665 359 C720 359 720 285 755 285" markerEnd={`url(#${riskArrowId})`} /><text className="meeting-reference-text" x="690" y="382">{zh ? "可选翻译分支" : "Optional translation branch"}</text>
     </SceneFrame>
   );
 }
@@ -224,6 +233,7 @@ export function MeetingCommunicationLab({ language, onBack }: MeetingCommunicati
       <section className="meeting-chain-section" aria-label={language === "zh" ? "场景链路" : "Scenario chain"}>
         <div className="meeting-section-heading"><span>{language === "zh" ? "信号流" : "Signal flow"}</span><h2>{language === "zh" ? "场景链路" : "Scenario chain"}</h2></div>
         <div className="meeting-chain-list">{scenario.chain.map((node, index) => <article className={`meeting-chain-node ${node.kind}`} key={`${node.kind}-${node.label.en}`}><span className="meeting-chain-index">{index + 1}</span><h3>{node.label[language]}</h3>{index < scenario.chain.length - 1 && <span className="meeting-chain-arrow" aria-hidden="true">→</span>}</article>)}</div>
+        {scenario.optionalBranch && <div aria-label={scenario.optionalBranch.label[language]} className="meeting-optional-branch" role="group"><span>{scenario.optionalBranch.label[language]}</span><strong>{scenario.optionalBranch.nodeLabel[language]}</strong><p>{scenario.optionalBranch.note[language]}</p></div>}
       </section>
 
       <section className="meeting-engineering-section" aria-label={language === "zh" ? "工程信息" : "Engineering information"}>

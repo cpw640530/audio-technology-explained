@@ -2787,6 +2787,11 @@ body.details-open {
   overscroll-behavior-inline: contain;
 }
 
+.meeting-scene-figure:focus-visible {
+  outline: 3px solid rgba(31, 157, 138, 0.38);
+  outline-offset: 3px;
+}
+
 .meeting-scene-figure svg {
   background: #f7faf8;
   border: 1px solid rgba(31, 117, 105, 0.12);
@@ -2967,6 +2972,32 @@ body.details-open {
 
 .meeting-chain-section {
   overflow: hidden;
+}
+
+.meeting-optional-branch {
+  align-items: center;
+  background: #fff7ea;
+  border: 1px dashed rgba(196, 111, 42, 0.48);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px 16px;
+  grid-template-columns: minmax(8rem, auto) minmax(8rem, auto) 1fr;
+  padding: 12px 14px;
+}
+
+.meeting-optional-branch span {
+  color: #8d5424;
+  font-size: 0.78rem;
+  font-weight: 820;
+}
+
+.meeting-optional-branch strong,
+.meeting-optional-branch p {
+  margin: 0;
+}
+
+.meeting-optional-branch p {
+  color: #51615d;
 }
 
 .meeting-chain-list {
@@ -6912,6 +6943,11 @@ body.details-open {
 
   .meeting-experience-grid,
   .meeting-engineering-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meeting-optional-branch {
+    align-items: start;
     grid-template-columns: minmax(0, 1fr);
   }
 
