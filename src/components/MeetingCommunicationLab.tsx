@@ -115,7 +115,7 @@ function SceneFrame({ name, description, arrowId, riskArrowId, children }: Scene
   const titleId = `${accessibleId}-title`;
   const descriptionId = `${accessibleId}-description`;
   return (
-    <figure className="meeting-diagram">
+    <figure className="meeting-scene-figure">
       <svg aria-labelledby={titleId} aria-describedby={descriptionId} role="img" viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg">
         <title id={titleId}>{name}</title>
         <desc id={descriptionId}>{description}</desc>
@@ -195,37 +195,37 @@ export function MeetingCommunicationLab({ language, onBack }: MeetingCommunicati
         <div><span className="details-category">{language === "zh" ? "应用场景" : "Applications"}</span><h1>{language === "zh" ? "会议与通信实验室" : "Conferencing and Communication Lab"}</h1><p>{language === "zh" ? "选择真实会议场景，观察用户体验、音频链路和工程排查重点如何同步变化。" : "Choose a real meeting scenario and see the user experience, audio chain, and engineering checks change together."}</p></div>
       </section>
 
-      <section className="meeting-module-section" aria-label={language === "zh" ? "会议场景选择" : "Meeting scenario selection"}>
-        <div className="meeting-module-grid">
-          {scenarioIds.map((id) => <button className="meeting-module-card" type="button" key={id} aria-pressed={activeScenario === id} onClick={() => setActiveScenario(id)}>{scenarios[id].label[language]}</button>)}
+      <section className="meeting-scenario-tabs-section" aria-label={language === "zh" ? "会议场景选择" : "Meeting scenario selection"}>
+        <div className="meeting-scenario-tabs">
+          {scenarioIds.map((id) => <button className="meeting-scenario-tab" type="button" key={id} aria-pressed={activeScenario === id} onClick={() => setActiveScenario(id)}>{scenarios[id].label[language]}</button>)}
         </div>
       </section>
 
-      <section className="meeting-diagram-section" aria-label={scenario.title[language]}>
+      <section className="meeting-scene-section" aria-label={scenario.title[language]}>
         <div className="meeting-section-heading"><span>{language === "zh" ? "当前场景" : "Current scenario"}</span><h2>{scenario.title[language]}</h2></div>
         <ScenarioScene id={activeScenario} language={language} />
       </section>
 
-      <section className="meeting-issue-section" aria-label={language === "zh" ? "当前体验" : "Current experience"}>
+      <section className="meeting-experience-section" aria-label={language === "zh" ? "当前体验" : "Current experience"}>
         <div className="meeting-section-heading"><span>{language === "zh" ? "用户视角" : "User view"}</span><h2>{language === "zh" ? "当前体验" : "Current experience"}</h2></div>
-        <div className="meeting-issue-grid">
-          <article className="meeting-issue-card"><h3>{language === "zh" ? "用户正在做什么" : "What the user is doing"}</h3><p>{scenario.action[language]}</p></article>
-          <article className="meeting-issue-card"><h3>{language === "zh" ? "正常体验" : "Expected experience"}</h3><p>{scenario.expected[language]}</p></article>
-          <article className="meeting-issue-card"><h3>{language === "zh" ? "主要风险" : "Main risk"}</h3><p>{scenario.risk[language]}</p></article>
+        <div className="meeting-experience-grid">
+          <article className="meeting-experience-item"><h3>{language === "zh" ? "用户正在做什么" : "What the user is doing"}</h3><p>{scenario.action[language]}</p></article>
+          <article className="meeting-experience-item"><h3>{language === "zh" ? "正常体验" : "Expected experience"}</h3><p>{scenario.expected[language]}</p></article>
+          <article className="meeting-experience-item"><h3>{language === "zh" ? "主要风险" : "Main risk"}</h3><p>{scenario.risk[language]}</p></article>
         </div>
       </section>
 
-      <section className="meeting-module-section" aria-label={language === "zh" ? "场景链路" : "Scenario chain"}>
+      <section className="meeting-chain-section" aria-label={language === "zh" ? "场景链路" : "Scenario chain"}>
         <div className="meeting-section-heading"><span>{language === "zh" ? "信号流" : "Signal flow"}</span><h2>{language === "zh" ? "场景链路" : "Scenario chain"}</h2></div>
-        <div className="meeting-module-grid">{scenario.chain.map((node, index) => <article className={`meeting-module-card ${node.kind}`} key={`${node.kind}-${node.label.en}`}><span>{index + 1}</span><h3>{node.label[language]}</h3></article>)}</div>
+        <div className="meeting-chain-list">{scenario.chain.map((node, index) => <article className={`meeting-chain-node ${node.kind}`} key={`${node.kind}-${node.label.en}`}><span className="meeting-chain-index">{index + 1}</span><h3>{node.label[language]}</h3><span className="meeting-chain-arrow" aria-hidden="true">→</span></article>)}</div>
       </section>
 
-      <section className="meeting-issue-section" aria-label={language === "zh" ? "工程信息" : "Engineering information"}>
+      <section className="meeting-engineering-section" aria-label={language === "zh" ? "工程信息" : "Engineering information"}>
         <div className="meeting-section-heading"><span>{language === "zh" ? "工程视角" : "Engineering view"}</span><h2>{language === "zh" ? "工程信息" : "Engineering information"}</h2></div>
-        <div className="meeting-issue-grid">
-          <article className="meeting-issue-card"><h3>{language === "zh" ? "关键模块" : "Key modules"}</h3><ul>{scenario.modules.map((item) => <li key={item.en}>{item[language]}</li>)}</ul></article>
-          <article className="meeting-issue-card"><h3>{language === "zh" ? "可观察指标" : "Observable metrics"}</h3><ul>{scenario.metrics.map((item) => <li key={item.en}>{item[language]}</li>)}</ul></article>
-          <article className="meeting-issue-card"><h3>{language === "zh" ? "排查顺序" : "Troubleshooting order"}</h3><ol>{scenario.checks.map((item) => <li key={item.en}>{item[language]}</li>)}</ol></article>
+        <div className="meeting-engineering-grid">
+          <article className="meeting-engineering-card"><h3>{language === "zh" ? "关键模块" : "Key modules"}</h3><ul className="meeting-engineering-list">{scenario.modules.map((item) => <li key={item.en}>{item[language]}</li>)}</ul></article>
+          <article className="meeting-engineering-card"><h3>{language === "zh" ? "可观察指标" : "Observable metrics"}</h3><ul className="meeting-engineering-list">{scenario.metrics.map((item) => <li key={item.en}>{item[language]}</li>)}</ul></article>
+          <article className="meeting-engineering-card"><h3>{language === "zh" ? "排查顺序" : "Troubleshooting order"}</h3><ol className="meeting-check-list">{scenario.checks.map((item) => <li key={item.en}>{item[language]}</li>)}</ol></article>
         </div>
       </section>
     </main>
