@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { Language } from "../content/knowledge";
 
@@ -6,276 +7,201 @@ type MeetingCommunicationLabProps = {
   onBack: () => void;
 };
 
+type ScenarioId = "personal" | "room" | "network" | "captions";
+type ChainKind = "capture" | "process" | "network" | "playback" | "recognition";
 type LocalizedText = Record<Language, string>;
 
-const flowModules = [
-  {
-    title: { zh: "麦克风阵列", en: "Mic array" },
-    body: {
-      zh: "采集近端说话，也会拾取扬声器回放、键盘声和房间混响。",
-      en: "Captures near-end speech, plus speaker playback, keyboard noise, and room reverb."
-    }
-  },
-  {
-    title: { zh: "AEC 回声消除", en: "AEC echo cancellation" },
-    body: {
-      zh: "用回采参考信号估计扬声器回声，从麦克风信号中抵消。",
-      en: "Uses render reference to estimate speaker echo and subtract it from microphone audio."
-    }
-  },
-  {
-    title: { zh: "NS / ANR 降噪", en: "NS / ANR noise reduction" },
-    body: {
-      zh: "压低风扇、空调、键盘等稳定或突发噪声，目标是保留语音。",
-      en: "Suppresses fan, HVAC, keyboard, and burst noise while preserving speech."
-    }
-  },
-  {
-    title: { zh: "AGC 自动增益", en: "AGC auto gain" },
-    body: {
-      zh: "把远近不同的说话音量拉到合适范围，避免太小或削波。",
-      en: "Keeps speech level in a usable range and avoids being too quiet or clipped."
-    }
-  },
-  {
-    title: { zh: "编码与网络", en: "Codec and network" },
-    body: {
-      zh: "把 PCM 压成 Opus 等实时码流，并随网络质量调整码率和冗余。",
-      en: "Compresses PCM into real-time streams such as Opus and adapts bitrate or redundancy to the network."
-    }
-  },
-  {
-    title: { zh: "Jitter Buffer", en: "Jitter buffer" },
-    body: {
-      zh: "吸收网络包到达时间抖动，用少量延迟换连续播放。",
-      en: "Absorbs packet arrival jitter, trading a little latency for continuous playback."
-    }
-  },
-  {
-    title: { zh: "PLC 丢包隐藏", en: "PLC packet-loss concealment" },
-    body: {
-      zh: "网络丢包时根据前后音频推测缺失片段，降低断续感。",
-      en: "Fills missing packets from surrounding audio to reduce dropouts."
-    }
-  },
-  {
-    title: { zh: "ASR / 字幕 / 翻译", en: "ASR / captions / translation" },
-    body: {
-      zh: "把增强后的语音送入识别和翻译链路，输出字幕、纪要或同传结果。",
-      en: "Feeds enhanced speech into recognition and translation to produce captions, notes, or interpretation."
-    }
-  }
-] satisfies Array<{ title: LocalizedText; body: LocalizedText }>;
+type Scenario = {
+  label: LocalizedText;
+  title: LocalizedText;
+  action: LocalizedText;
+  expected: LocalizedText;
+  risk: LocalizedText;
+  modules: LocalizedText[];
+  metrics: LocalizedText[];
+  checks: LocalizedText[];
+  chain: Array<{ kind: ChainKind; label: LocalizedText }>;
+};
 
-const issueCards = [
-  {
-    title: { zh: "回声大", en: "Loud echo" },
-    cause: {
-      zh: "常见原因是回采参考没接入、参考与播放不同步、扬声器太响、房间混响长，或双讲时 AEC 抑制策略不稳。",
-      en: "Common causes include missing render reference, reference/playback misalignment, loud speakers, long room reverb, or unstable double-talk behavior."
-    },
-    checks: [
-      { zh: "先看回采参考是否正确进入 AEC。", en: "First check whether render reference correctly enters AEC." },
-      { zh: "再看参考和麦克风采集是否时间对齐。", en: "Then check whether reference and microphone capture are time-aligned." },
-      { zh: "最后看扬声器音量、房间反射和双讲策略。", en: "Finally inspect speaker level, room reflections, and double-talk policy." }
+const t = (zh: string, en: string): LocalizedText => ({ zh, en });
+
+const scenarios: Record<ScenarioId, Scenario> = {
+  personal: {
+    label: t("个人终端", "Personal device"),
+    title: t("个人终端：免提通话", "Personal device: speakerphone call"),
+    action: t("用户用笔记本或手机的内置麦克风和扬声器参加远程会议。", "A user joins a remote meeting on a laptop or phone using its built-in microphone and speaker."),
+    expected: t("近端和远端可以自然双讲，远端不会听到自己的回声。", "Near- and far-end participants can double-talk naturally without the remote participant hearing an echo."),
+    risk: t("扬声器声音经桌面和墙面反射回到麦克风；音量变化和双讲会让回声更难消除。", "Speaker audio can reflect from the desk and walls into the microphone; level changes and double-talk make cancellation harder."),
+    modules: [t("AEC", "AEC"), t("双讲检测", "Double-talk detection"), t("NS", "NS"), t("AGC", "AGC"), t("耳机模式", "Headset mode")],
+    metrics: [t("ERLE", "ERLE"), t("回声残留", "Residual echo"), t("近端语音保真度", "Near-end speech fidelity")],
+    checks: [t("确认扬声器回采参考进入 AEC。", "Confirm the speaker render reference reaches AEC."), t("检查参考与麦克风信号是否对齐。", "Check alignment between reference and microphone audio."), t("在双讲时检查近端语音是否被误抑制。", "Check whether near-end speech is over-suppressed during double-talk.")],
+    chain: [
+      { kind: "capture", label: t("内置麦克风", "Built-in mic") },
+      { kind: "process", label: t("AEC / 双讲 / NS / AGC", "AEC / double-talk / NS / AGC") },
+      { kind: "network", label: t("实时传输", "Real-time transport") },
+      { kind: "playback", label: t("远端参与者", "Remote participant") }
     ]
   },
-  {
-    title: { zh: "听不清", en: "Poor intelligibility" },
-    cause: {
-      zh: "可能来自麦克风距离远、混响重、降噪过强、AGC 泵动、编码码率过低或多人同时说话。",
-      en: "It can come from distant microphones, heavy reverb, over-aggressive denoising, AGC pumping, low bitrate, or overlapping talkers."
-    },
-    checks: [
-      { zh: "先看原始采集 SNR 和是否削波。", en: "First inspect raw capture SNR and clipping." },
-      { zh: "再分别旁路 NS、AGC、编码，定位哪个模块损伤语音。", en: "Then bypass NS, AGC, and codec separately to locate speech damage." },
-      { zh: "多麦设备还要看波束方向和说话人位置。", en: "For array devices, also check beam direction and speaker position." }
+  room: {
+    label: t("多人会议室", "Meeting room"),
+    title: t("多人会议室：远场拾音", "Meeting room: far-field pickup"),
+    action: t("三名以上参会者围桌讨论，通过中央阵列与远端会场沟通。", "Three or more participants discuss around a table through a central array and far-end display."),
+    expected: t("阵列持续对准当前说话人，远近座位的语音都清晰稳定。", "The array tracks the active talker and keeps speech clear from both near and distant seats."),
+    risk: t("多人位置、扬声器回放和房间多次反射会扩散声源并加重混响。", "Multiple talker positions, speaker playback, and repeated room reflections spread sources and increase reverberation."),
+    modules: [t("麦克风阵列", "Microphone array"), t("波束拾音", "Beam pickup"), t("AEC", "AEC"), t("去混响", "Dereverberation")],
+    metrics: [t("拾音覆盖率", "Pickup coverage"), t("直达混响比", "Direct-to-reverberant ratio"), t("远端回声残留", "Far-end echo residue")],
+    checks: [t("确认各阵元工作且通道增益一致。", "Confirm every array element works with matched channel gain."), t("观察拾音波束是否指向当前说话人。", "Observe whether the pickup beam points at the active talker."), t("检查扬声器位置与主要反射路径。", "Inspect speaker placement and dominant reflection paths.")],
+    chain: [
+      { kind: "capture", label: t("中央阵列拾音", "Central array pickup") },
+      { kind: "process", label: t("波束形成 / 去混响", "Beamforming / dereverb") },
+      { kind: "process", label: t("AEC", "AEC") },
+      { kind: "network", label: t("会议传输", "Conference transport") },
+      { kind: "playback", label: t("远端会场", "Far-end room") }
     ]
   },
-  {
-    title: { zh: "字幕慢", en: "Delayed captions" },
-    cause: {
-      zh: "字幕延迟通常不是单点问题，而是端点检测、分帧、网络、模型推理、翻译和稳定出字策略累加。",
-      en: "Caption delay is usually cumulative: endpointing, frames, network, model inference, translation, and partial-result stabilization."
-    },
-    checks: [
-      { zh: "先区分音频播放延迟和字幕链路延迟。", en: "First separate playback latency from caption-chain latency." },
-      { zh: "再看 VAD/端点检测是否等太久才提交语音。", en: "Then check whether VAD/endpointing waits too long before submitting speech." },
-      { zh: "最后看 ASR 流式输出、翻译和 UI 稳定策略。", en: "Finally inspect streaming ASR, translation, and UI stabilization policy." }
+  network: {
+    label: t("弱网会议", "Poor network"),
+    title: t("弱网会议：连续听感", "Poor network: continuous listening"),
+    action: t("本地与远端端点在延迟抖动和偶发丢包的网络上持续通话。", "Local and remote endpoints continue a call over a network with jitter and occasional packet loss."),
+    expected: t("短时抖动和单个丢包不会造成明显停顿，播放延迟保持可控。", "Brief jitter and an isolated missing packet do not cause obvious gaps, while playout delay stays controlled."),
+    risk: t("包间隔不均或连续丢包会造成缓冲欠载、卡顿和延迟累积。", "Uneven packet spacing or burst loss can cause buffer underruns, dropouts, and accumulated latency."),
+    modules: [t("Opus", "Opus"), t("RTP", "RTP"), t("FEC", "FEC"), t("Jitter Buffer", "Jitter Buffer"), t("PLC", "PLC")],
+    metrics: [t("丢包率", "Packet loss rate"), t("到达抖动", "Arrival jitter"), t("播放缓冲深度", "Playout buffer depth")],
+    checks: [t("先区分网络丢包与接收端晚到包。", "First distinguish network loss from packets arriving too late."), t("检查抖动缓冲目标延迟与实际深度。", "Check jitter-buffer target delay against actual depth."), t("确认 FEC 恢复与 PLC 补偿是否连续生效。", "Confirm FEC recovery and PLC concealment operate continuously.")],
+    chain: [
+      { kind: "capture", label: t("本地端点", "Local endpoint") },
+      { kind: "process", label: t("Opus 编码", "Opus encode") },
+      { kind: "network", label: t("RTP / FEC / 抖动与丢包", "RTP / FEC / jitter and loss") },
+      { kind: "process", label: t("Jitter Buffer / PLC", "Jitter Buffer / PLC") },
+      { kind: "playback", label: t("远端端点", "Remote endpoint") }
+    ]
+  },
+  captions: {
+    label: t("实时字幕", "Live captions"),
+    title: t("实时字幕：识别旁路", "Live captions: recognition side path"),
+    action: t("参会者正常通话，同时查看增量更新的字幕，并可选开启翻译。", "Participants talk normally while reading incrementally updated captions with optional translation."),
+    expected: t("首字快速出现，后续文字稳定增量更新，字幕不会阻塞主音频链路。", "The first words appear quickly, later text updates incrementally, and captions never block the main audio path."),
+    risk: t("端点等待、识别推理、翻译和 UI 稳定策略会叠加字幕延迟。", "Endpointing, recognition inference, translation, and UI stabilization can add up to caption latency."),
+    modules: [t("流式 ASR", "Streaming ASR"), t("增量字幕", "Incremental captions"), t("可选翻译", "Optional translation"), t("字幕 UI", "Caption UI")],
+    metrics: [t("首字延迟", "First-token latency"), t("增量稳定时间", "Partial stabilization time"), t("字错率", "Word error rate")],
+    checks: [t("分别测量增强 PCM 到 ASR 与 ASR 到 UI 的延迟。", "Measure enhanced-PCM-to-ASR and ASR-to-UI latency separately."), t("检查流式结果是否及时增量提交。", "Check that streaming results are committed incrementally."), t("关闭翻译比较首字延迟，定位旁路瓶颈。", "Disable translation and compare first-token latency to locate the side-path bottleneck.")],
+    chain: [
+      { kind: "capture", label: t("增强后 PCM", "Enhanced PCM") },
+      { kind: "recognition", label: t("流式识别", "Streaming recognition") },
+      { kind: "recognition", label: t("增量文字", "Incremental text") },
+      { kind: "process", label: t("可选翻译", "Optional translation") },
+      { kind: "playback", label: t("字幕界面", "Caption UI") }
     ]
   }
-] satisfies Array<{ title: LocalizedText; cause: LocalizedText; checks: LocalizedText[] }>;
+};
 
-function MeetingChainDiagram({ language }: { language: Language }) {
+const scenarioIds = Object.keys(scenarios) as ScenarioId[];
+
+function SceneFrame({ name, children }: { name: string; children: React.ReactNode }) {
   return (
     <figure className="meeting-diagram">
-      <svg
-        aria-label={language === "zh" ? "会议与通信端到端音频链路图" : "End-to-end conferencing audio chain diagram"}
-        role="img"
-        viewBox="0 0 980 520"
-        xmlns="http://www.w3.org/2000/svg"
-      >
+      <svg aria-label={name} role="img" viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <marker id="meetingArrow" markerHeight="8" markerWidth="8" orient="auto" refX="7" refY="4">
-            <path d="M0 0 8 4 0 8Z" fill="#1f7569" />
-          </marker>
-          <marker id="meetingEchoArrow" markerHeight="8" markerWidth="8" orient="auto" refX="7" refY="4">
-            <path d="M0 0 8 4 0 8Z" fill="#b44c6d" />
-          </marker>
+          <marker id="scene-arrow" markerHeight="8" markerWidth="8" orient="auto" refX="7" refY="4"><path d="M0 0 8 4 0 8Z" fill="#1f7569" /></marker>
+          <marker id="scene-risk-arrow" markerHeight="8" markerWidth="8" orient="auto" refX="7" refY="4"><path d="M0 0 8 4 0 8Z" fill="#b44c6d" /></marker>
         </defs>
-        <rect className="meeting-diagram-bg" height="520" rx="18" width="980" />
-        <text className="meeting-diagram-title" x="40" y="46">
-          {language === "zh" ? "会议音频同时有上行、下行和回采参考三条关键路径" : "Meeting audio has uplink, downlink, and render-reference paths"}
-        </text>
-
-        <text className="meeting-lane-title" x="48" y="94">{language === "zh" ? "上行：本端说话送到远端" : "Uplink: local speech to remote"}</text>
-        <rect className="meeting-box capture" height="58" rx="10" width="128" x="48" y="116" />
-        <text className="meeting-box-title" x="112" y="140" textAnchor="middle">{language === "zh" ? "麦克风阵列" : "Mic array"}</text>
-        <text className="meeting-box-sub" x="112" y="160" textAnchor="middle">near-end PCM</text>
-
-        <rect className="meeting-box process" height="58" rx="10" width="112" x="218" y="116" />
-        <text className="meeting-box-title" x="274" y="140" textAnchor="middle">AEC</text>
-        <text className="meeting-box-sub" x="274" y="160" textAnchor="middle">{language === "zh" ? "回声消除" : "echo cancel"}</text>
-
-        <rect className="meeting-box process" height="58" rx="10" width="112" x="370" y="116" />
-        <text className="meeting-box-title" x="426" y="140" textAnchor="middle">NS / ANR</text>
-        <text className="meeting-box-sub" x="426" y="160" textAnchor="middle">{language === "zh" ? "降噪" : "denoise"}</text>
-
-        <rect className="meeting-box process" height="58" rx="10" width="112" x="522" y="116" />
-        <text className="meeting-box-title" x="578" y="140" textAnchor="middle">AGC</text>
-        <text className="meeting-box-sub" x="578" y="160" textAnchor="middle">{language === "zh" ? "音量稳定" : "leveling"}</text>
-
-        <rect className="meeting-box network" height="58" rx="10" width="128" x="674" y="116" />
-        <text className="meeting-box-title" x="738" y="140" textAnchor="middle">{language === "zh" ? "编码 / RTP" : "Codec / RTP"}</text>
-        <text className="meeting-box-sub" x="738" y="160" textAnchor="middle">Opus / FEC</text>
-
-        <rect className="meeting-box remote" height="58" rx="10" width="108" x="842" y="116" />
-        <text className="meeting-box-title" x="896" y="140" textAnchor="middle">{language === "zh" ? "远端" : "Remote"}</text>
-        <text className="meeting-box-sub" x="896" y="160" textAnchor="middle">{language === "zh" ? "听到你" : "hears you"}</text>
-
-        <path className="meeting-arrow" d="M176 145 H218" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M330 145 H370" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M482 145 H522" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M634 145 H674" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M802 145 H842" markerEnd="url(#meetingArrow)" />
-
-        <text className="meeting-lane-title" x="48" y="254">{language === "zh" ? "下行：远端声音在本端播放" : "Downlink: remote voice plays locally"}</text>
-        <rect className="meeting-box network" height="58" rx="10" width="126" x="48" y="276" />
-        <text className="meeting-box-title" x="111" y="300" textAnchor="middle">{language === "zh" ? "网络包" : "Packets"}</text>
-        <text className="meeting-box-sub" x="111" y="320" textAnchor="middle">RTP / SRTP</text>
-
-        <rect className="meeting-box buffer" height="58" rx="10" width="126" x="216" y="276" />
-        <text className="meeting-box-title" x="279" y="300" textAnchor="middle">Jitter Buffer</text>
-        <text className="meeting-box-sub" x="279" y="320" textAnchor="middle">{language === "zh" ? "抗抖动" : "de-jitter"}</text>
-
-        <rect className="meeting-box buffer" height="58" rx="10" width="112" x="384" y="276" />
-        <text className="meeting-box-title" x="440" y="300" textAnchor="middle">PLC</text>
-        <text className="meeting-box-sub" x="440" y="320" textAnchor="middle">{language === "zh" ? "丢包隐藏" : "loss conceal"}</text>
-
-        <rect className="meeting-box playback" height="58" rx="10" width="112" x="538" y="276" />
-        <text className="meeting-box-title" x="594" y="300" textAnchor="middle">{language === "zh" ? "解码 / 混音" : "Decode / mix"}</text>
-        <text className="meeting-box-sub" x="594" y="320" textAnchor="middle">PCM</text>
-
-        <rect className="meeting-box playback" height="58" rx="10" width="126" x="692" y="276" />
-        <text className="meeting-box-title" x="755" y="300" textAnchor="middle">{language === "zh" ? "扬声器播放" : "Speaker render"}</text>
-        <text className="meeting-box-sub" x="755" y="320" textAnchor="middle">{language === "zh" ? "远端参考来源" : "reference source"}</text>
-
-        <path className="meeting-arrow" d="M174 305 H216" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M342 305 H384" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M496 305 H538" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M650 305 H692" markerEnd="url(#meetingArrow)" />
-
-        <path className="meeting-echo-arrow" d="M755 276 C742 220 382 220 286 174" markerEnd="url(#meetingEchoArrow)" />
-        <rect className="meeting-reference-chip" height="32" rx="16" width="178" x="584" y="204" />
-        <text className="meeting-reference-text" x="673" y="225" textAnchor="middle">
-          {language === "zh" ? "回采参考信号 -> AEC" : "Render reference -> AEC"}
-        </text>
-
-        <text className="meeting-lane-title" x="48" y="414">{language === "zh" ? "字幕 / 翻译旁路" : "Caption / translation side path"}</text>
-        <rect className="meeting-box caption" height="58" rx="10" width="144" x="48" y="436" />
-        <text className="meeting-box-title" x="120" y="460" textAnchor="middle">{language === "zh" ? "增强后语音" : "Enhanced speech"}</text>
-        <text className="meeting-box-sub" x="120" y="480" textAnchor="middle">clean PCM</text>
-
-        <rect className="meeting-box caption" height="58" rx="10" width="126" x="238" y="436" />
-        <text className="meeting-box-title" x="301" y="460" textAnchor="middle">ASR</text>
-        <text className="meeting-box-sub" x="301" y="480" textAnchor="middle">{language === "zh" ? "流式识别" : "streaming"}</text>
-
-        <rect className="meeting-box caption" height="58" rx="10" width="126" x="410" y="436" />
-        <text className="meeting-box-title" x="473" y="460" textAnchor="middle">{language === "zh" ? "翻译 / 摘要" : "Translate / notes"}</text>
-        <text className="meeting-box-sub" x="473" y="480" textAnchor="middle">{language === "zh" ? "可选" : "optional"}</text>
-
-        <rect className="meeting-box caption" height="58" rx="10" width="126" x="582" y="436" />
-        <text className="meeting-box-title" x="645" y="460" textAnchor="middle">{language === "zh" ? "字幕显示" : "Captions UI"}</text>
-        <text className="meeting-box-sub" x="645" y="480" textAnchor="middle">{language === "zh" ? "稳定出字" : "stabilized text"}</text>
-
-        <path className="meeting-arrow" d="M192 465 H238" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M364 465 H410" markerEnd="url(#meetingArrow)" />
-        <path className="meeting-arrow" d="M536 465 H582" markerEnd="url(#meetingArrow)" />
+        <rect className="meeting-diagram-bg" height="420" rx="18" width="980" />
+        {children}
       </svg>
-      <figcaption>
-        {language === "zh"
-          ? "图里把会议音频拆成上行、下行和字幕旁路。回采参考不是用户能听到的新声音，而是 AEC 用来判断哪些麦克风信号来自扬声器回放。"
-          : "The diagram separates meeting audio into uplink, downlink, and caption side paths. The render reference is not new audible sound; it tells AEC which microphone content came from speaker playback."}
-      </figcaption>
     </figure>
   );
 }
 
+function ScenarioScene({ id, language }: { id: ScenarioId; language: Language }) {
+  const zh = language === "zh";
+  if (id === "personal") return (
+    <SceneFrame name={zh ? "个人终端会议场景图" : "Personal device meeting scene diagram"}>
+      <text className="meeting-diagram-title" x="44" y="48">{zh ? "内置扬声器与麦克风形成声学回路" : "Built-in speaker and microphone form an acoustic loop"}</text>
+      <rect className="meeting-box capture" x="90" y="120" width="250" height="178" rx="12" />
+      <text className="meeting-box-title" x="215" y="150" textAnchor="middle">{zh ? "笔记本 / 手机" : "Laptop / phone"}</text>
+      <circle cx="170" cy="210" r="34" className="meeting-box process" /><text className="meeting-box-sub" x="170" y="216" textAnchor="middle">{zh ? "本地用户" : "Local user"}</text>
+      <rect className="meeting-box playback" x="245" y="184" width="72" height="42" rx="8" /><text className="meeting-box-sub" x="281" y="210" textAnchor="middle">{zh ? "内置扬声器" : "Speaker"}</text>
+      <rect className="meeting-box capture" x="245" y="246" width="72" height="36" rx="8" /><text className="meeting-box-sub" x="281" y="269" textAnchor="middle">{zh ? "内置麦克风" : "Mic"}</text>
+      <rect className="meeting-box remote" x="700" y="150" width="190" height="120" rx="12" /><text className="meeting-box-title" x="795" y="202" textAnchor="middle">{zh ? "远端参与者" : "Remote participant"}</text><text className="meeting-box-sub" x="795" y="228" textAnchor="middle">{zh ? "听到本地语音" : "Hears local speech"}</text>
+      <path className="meeting-arrow" d="M340 206 H690" markerEnd="url(#scene-arrow)" /><text className="meeting-reference-text" x="515" y="190" textAnchor="middle">{zh ? "会议网络" : "Meeting network"}</text>
+      <path className="meeting-echo-arrow" d="M282 184 C410 70 420 345 282 282" fill="none" markerEnd="url(#scene-risk-arrow)" /><text className="meeting-reference-text" x="445" y="322" textAnchor="middle">{zh ? "扬声器到麦克风的回声路径" : "Speaker-to-mic echo path"}</text>
+    </SceneFrame>
+  );
+  if (id === "room") return (
+    <SceneFrame name={zh ? "多人会议室场景图" : "Meeting room scene diagram"}>
+      <text className="meeting-diagram-title" x="44" y="48">{zh ? "波束跟随说话人，反射从多个方向到达阵列" : "Beams follow talkers while reflections reach the array from many directions"}</text>
+      <rect className="meeting-box process" x="150" y="105" width="560" height="230" rx="70" />
+      {[230, 430, 630].map((x, i) => <g key={x}><circle className="meeting-box capture" cx={x} cy={i === 1 ? 300 : 155} r="28" /><text className="meeting-box-sub" x={x} y={i === 1 ? 305 : 160} textAnchor="middle">P{i + 1}</text></g>)}
+      <circle className="meeting-box capture" cx="430" cy="220" r="42" /><text className="meeting-box-title" x="430" y="216" textAnchor="middle">{zh ? "中央阵列" : "Central array"}</text><text className="meeting-box-sub" x="430" y="237" textAnchor="middle">beam pickup</text>
+      <path className="meeting-arrow" d="M255 166 Q340 205 390 217" markerEnd="url(#scene-arrow)" /><path className="meeting-arrow" d="M405 282 L425 265" markerEnd="url(#scene-arrow)" /><path className="meeting-arrow" d="M605 166 Q520 205 470 217" markerEnd="url(#scene-arrow)" />
+      <rect className="meeting-box playback" x="760" y="105" width="150" height="92" rx="10" /><text className="meeting-box-title" x="835" y="145" textAnchor="middle">{zh ? "远端显示" : "Far-end display"}</text><text className="meeting-box-sub" x="835" y="168" textAnchor="middle">{zh ? "扬声器" : "Speaker"}</text>
+      <path className="meeting-echo-arrow" d="M760 170 Q630 70 500 195" fill="none" markerEnd="url(#scene-risk-arrow)" /><path className="meeting-echo-arrow" d="M760 180 Q650 370 475 250" fill="none" strokeDasharray="8 7" markerEnd="url(#scene-risk-arrow)" /><text className="meeting-reference-text" x="735" y="350" textAnchor="middle">{zh ? "墙面与桌面反射" : "Wall and table reflections"}</text>
+    </SceneFrame>
+  );
+  if (id === "network") return (
+    <SceneFrame name={zh ? "弱网会议场景图" : "Poor network meeting scene diagram"}>
+      <text className="meeting-diagram-title" x="44" y="48">{zh ? "包到达间隔不均，其中一个包缺失" : "Packets arrive unevenly and one packet is missing"}</text>
+      <rect className="meeting-box capture" x="60" y="150" width="150" height="100" rx="12" /><text className="meeting-box-title" x="135" y="193" textAnchor="middle">{zh ? "本地端点" : "Local endpoint"}</text><text className="meeting-box-sub" x="135" y="218" textAnchor="middle">Opus / RTP</text>
+      <rect className="meeting-box remote" x="770" y="150" width="150" height="100" rx="12" /><text className="meeting-box-title" x="845" y="193" textAnchor="middle">{zh ? "远端端点" : "Remote endpoint"}</text><text className="meeting-box-sub" x="845" y="218" textAnchor="middle">{zh ? "连续播放" : "Continuous playout"}</text>
+      {[270, 350, 470, 650].map((x, i) => <g key={x}><rect className="meeting-box network" x={x} y={i % 2 ? 174 : 140} width="54" height="42" rx="6" /><text className="meeting-box-sub" x={x + 27} y={i % 2 ? 200 : 166} textAnchor="middle">#{i + 1}</text></g>)}
+      <rect x="560" y="174" width="54" height="42" rx="6" fill="none" stroke="#b44c6d" strokeDasharray="7 6" /><text className="meeting-reference-text" x="587" y="200" textAnchor="middle">{zh ? "缺失" : "lost"}</text>
+      <path className="meeting-arrow" d="M210 220 C330 310 650 300 760 220" fill="none" markerEnd="url(#scene-arrow)" /><text className="meeting-reference-text" x="490" y="325" textAnchor="middle">FEC → Jitter Buffer → PLC</text>
+    </SceneFrame>
+  );
+  return (
+    <SceneFrame name={zh ? "实时字幕会议场景图" : "Live captions meeting scene diagram"}>
+      <text className="meeting-diagram-title" x="44" y="48">{zh ? "增强语音保持主链路，同时分支到字幕识别旁路" : "Enhanced speech stays on the main path and branches to caption recognition"}</text>
+      <rect className="meeting-box capture" x="60" y="125" width="150" height="68" rx="10" /><text className="meeting-box-title" x="135" y="154" textAnchor="middle">{zh ? "增强后 PCM" : "Enhanced PCM"}</text><text className="meeting-box-sub" x="135" y="176" textAnchor="middle">clean speech</text>
+      <rect className="meeting-box playback" x="730" y="125" width="170" height="68" rx="10" /><text className="meeting-box-title" x="815" y="165" textAnchor="middle">{zh ? "主会议音频" : "Main meeting audio"}</text><path className="meeting-arrow" d="M210 159 H720" markerEnd="url(#scene-arrow)" />
+      <path className="meeting-echo-arrow" d="M250 159 V260 H315" fill="none" markerEnd="url(#scene-risk-arrow)" /><text className="meeting-reference-text" x="250" y="240">{zh ? "字幕旁路" : "Caption side path"}</text>
+      {[{ x: 325, a: zh ? "流式识别" : "Streaming ASR", b: zh ? "增量结果" : "Partial results" }, { x: 515, a: zh ? "可选翻译" : "Optional translation", b: zh ? "可旁路" : "Can bypass" }, { x: 705, a: zh ? "字幕界面" : "Subtitle UI", b: zh ? "稳定出字" : "Stable text" }].map(({ x, a, b }) => <g key={x}><rect className="meeting-box caption" x={x} y="230" width="150" height="82" rx="10" /><text className="meeting-box-title" x={x + 75} y="264" textAnchor="middle">{a}</text><text className="meeting-box-sub" x={x + 75} y="288" textAnchor="middle">{b}</text></g>)}
+      <path className="meeting-arrow" d="M475 271 H505" markerEnd="url(#scene-arrow)" /><path className="meeting-arrow" d="M665 271 H695" markerEnd="url(#scene-arrow)" />
+    </SceneFrame>
+  );
+}
+
 export function MeetingCommunicationLab({ language, onBack }: MeetingCommunicationLabProps) {
+  const [activeScenario, setActiveScenario] = useState<ScenarioId>("personal");
+  const scenario = scenarios[activeScenario];
+
   return (
     <main className="meeting-lab-page" aria-label={language === "zh" ? "会议与通信实验室" : "Conferencing and Communication Lab"}>
       <section className="sound-lab-hero meeting-lab-hero">
-        <button className="sound-lab-back" type="button" onClick={onBack}>
-          <ArrowLeft size={18} aria-hidden="true" />
-          {language === "zh" ? "返回知识库" : "Back to knowledge base"}
-        </button>
-        <div>
-          <span className="details-category">{language === "zh" ? "应用场景" : "Applications"}</span>
-          <h1>{language === "zh" ? "会议与通信实验室" : "Conferencing and Communication Lab"}</h1>
-          <p>
-            {language === "zh"
-              ? "从端到端产品链路理解会议音频：本端说话如何送到远端，远端声音如何播放，回声为什么会回来，以及字幕为什么会慢。"
-              : "Understand meeting audio as an end-to-end product chain: how local speech reaches remote users, how remote audio plays locally, why echo returns, and why captions can lag."}
-          </p>
-        </div>
+        <button className="sound-lab-back" type="button" onClick={onBack}><ArrowLeft size={18} aria-hidden="true" />{language === "zh" ? "返回知识库" : "Back to knowledge base"}</button>
+        <div><span className="details-category">{language === "zh" ? "应用场景" : "Applications"}</span><h1>{language === "zh" ? "会议与通信实验室" : "Conferencing and Communication Lab"}</h1><p>{language === "zh" ? "选择真实会议场景，观察用户体验、音频链路和工程排查重点如何同步变化。" : "Choose a real meeting scenario and see the user experience, audio chain, and engineering checks change together."}</p></div>
       </section>
 
-      <section className="meeting-diagram-section" aria-label={language === "zh" ? "会议与通信端到端链路" : "End-to-end conferencing chain"}>
-        <MeetingChainDiagram language={language} />
-      </section>
-
-      <section className="meeting-module-section" aria-label={language === "zh" ? "链路模块解释" : "Chain module explanations"}>
-        <div className="meeting-section-heading">
-          <span>{language === "zh" ? "链路模块" : "Chain modules"}</span>
-          <h2>{language === "zh" ? "每个模块解决什么问题" : "What each module solves"}</h2>
-        </div>
+      <section className="meeting-module-section" aria-label={language === "zh" ? "会议场景选择" : "Meeting scenario selection"}>
         <div className="meeting-module-grid">
-          {flowModules.map((module) => (
-            <article className="meeting-module-card" key={module.title.en}>
-              <h3>{module.title[language]}</h3>
-              <p>{module.body[language]}</p>
-            </article>
-          ))}
+          {scenarioIds.map((id) => <button className="meeting-module-card" type="button" key={id} aria-pressed={activeScenario === id} onClick={() => setActiveScenario(id)}>{scenarios[id].label[language]}</button>)}
         </div>
       </section>
 
-      <section className="meeting-issue-section" aria-label={language === "zh" ? "典型问题诊断" : "Common issue troubleshooting"}>
-        <div className="meeting-section-heading">
-          <span>{language === "zh" ? "排查思路" : "Troubleshooting"}</span>
-          <h2>{language === "zh" ? "典型问题诊断" : "Common Issue Troubleshooting"}</h2>
-        </div>
+      <section className="meeting-diagram-section" aria-label={scenario.title[language]}>
+        <div className="meeting-section-heading"><span>{language === "zh" ? "当前场景" : "Current scenario"}</span><h2>{scenario.title[language]}</h2></div>
+        <ScenarioScene id={activeScenario} language={language} />
+      </section>
+
+      <section className="meeting-issue-section" aria-label={language === "zh" ? "当前体验" : "Current experience"}>
+        <div className="meeting-section-heading"><span>{language === "zh" ? "用户视角" : "User view"}</span><h2>{language === "zh" ? "当前体验" : "Current experience"}</h2></div>
         <div className="meeting-issue-grid">
-          {issueCards.map((issue) => (
-            <article className="meeting-issue-card" key={issue.title.en}>
-              <h3>{issue.title[language]}</h3>
-              <p>{issue.cause[language]}</p>
-              <ol>
-                {issue.checks.map((check) => (
-                  <li key={check.en}>{check[language]}</li>
-                ))}
-              </ol>
-            </article>
-          ))}
+          <article className="meeting-issue-card"><h3>{language === "zh" ? "用户正在做什么" : "What the user is doing"}</h3><p>{scenario.action[language]}</p></article>
+          <article className="meeting-issue-card"><h3>{language === "zh" ? "正常体验" : "Expected experience"}</h3><p>{scenario.expected[language]}</p></article>
+          <article className="meeting-issue-card"><h3>{language === "zh" ? "主要风险" : "Main risk"}</h3><p>{scenario.risk[language]}</p></article>
+        </div>
+      </section>
+
+      <section className="meeting-module-section" aria-label={language === "zh" ? "场景链路" : "Scenario chain"}>
+        <div className="meeting-section-heading"><span>{language === "zh" ? "信号流" : "Signal flow"}</span><h2>{language === "zh" ? "场景链路" : "Scenario chain"}</h2></div>
+        <div className="meeting-module-grid">{scenario.chain.map((node, index) => <article className={`meeting-module-card ${node.kind}`} key={`${node.kind}-${node.label.en}`}><span>{index + 1}</span><h3>{node.label[language]}</h3></article>)}</div>
+      </section>
+
+      <section className="meeting-issue-section" aria-label={language === "zh" ? "工程信息" : "Engineering information"}>
+        <div className="meeting-section-heading"><span>{language === "zh" ? "工程视角" : "Engineering view"}</span><h2>{language === "zh" ? "工程信息" : "Engineering information"}</h2></div>
+        <div className="meeting-issue-grid">
+          <article className="meeting-issue-card"><h3>{language === "zh" ? "关键模块" : "Key modules"}</h3><ul>{scenario.modules.map((item) => <li key={item.en}>{item[language]}</li>)}</ul></article>
+          <article className="meeting-issue-card"><h3>{language === "zh" ? "可观察指标" : "Observable metrics"}</h3><ul>{scenario.metrics.map((item) => <li key={item.en}>{item[language]}</li>)}</ul></article>
+          <article className="meeting-issue-card"><h3>{language === "zh" ? "排查顺序" : "Troubleshooting order"}</h3><ol>{scenario.checks.map((item) => <li key={item.en}>{item[language]}</li>)}</ol></article>
         </div>
       </section>
     </main>
