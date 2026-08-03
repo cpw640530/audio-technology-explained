@@ -216,6 +216,9 @@ describe("Audio knowledge app", () => {
     const details = screen.getByRole("dialog", { name: "主题详情" });
     const openLabButton = within(details).getByRole("button", { name: "打开会议与通信实验室" });
     expect(details).toBeInTheDocument();
+    expect(within(details).getByText(/个人终端、多人会议室、弱网会议和实时字幕/)).toBeInTheDocument();
+    expect(within(details).getByText(/环境、信号链、症状、可观察指标/)).toBeInTheDocument();
+    expect(within(details).getByText(/声学问题、网络问题和字幕旁路延迟/)).toBeInTheDocument();
     expect(openLabButton).toBeInTheDocument();
 
     await user.click(openLabButton);

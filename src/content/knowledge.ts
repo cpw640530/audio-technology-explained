@@ -2009,37 +2009,38 @@ export const categories: Category[] = [
       {
         title: { zh: "会议与通信", en: "Conferencing and Communication" },
         summary: {
-          zh: "分析视频会议音频、远场拾音、回声消除、实时字幕和翻译。",
-          en: "Analyze conferencing audio, far-field capture, echo cancellation, live captions, and translation."
+          zh: "从个人终端、多人会议室、弱网会议和实时字幕四个场景理解会议体验与排查方法。",
+          en: "Understand meeting experience and troubleshooting through personal devices, meeting rooms, poor networks, and live captions."
         },
         bullets: [
-          { zh: "远场拾音", en: "Far-field capture" },
-          { zh: "多人语音增强", en: "Multi-speaker enhancement" },
-          { zh: "实时字幕与翻译", en: "Live captions and translation" }
+          { zh: "个人终端与声学回声", en: "Personal devices and acoustic echo" },
+          { zh: "多人会议室与远场拾音", en: "Meeting rooms and far-field pickup" },
+          { zh: "弱网下的连续播放", en: "Continuous playout on poor networks" },
+          { zh: "实时字幕识别旁路", en: "Live-caption recognition side path" }
         ],
         detail: {
           explanation: {
-            zh: "会议与通信音频要在网络、设备和环境都不稳定的情况下保持清晰、同步和低延迟。采集端从麦克风阵列拿到近端语音，经 AEC、降噪、AGC、编码和网络发送到远端；播放端接收远端码流，经 Jitter Buffer、PLC、解码、混音和扬声器播放。AEC 需要拿到扬声器播放的远端参考信号，才能估计并抵消被麦克风再次拾取的回声。Jitter Buffer 会用少量缓存换取连续播放，但缓存过大也会让通话和字幕变慢。",
-            en: "Conferencing and communication audio must stay clear, synchronized, and low-latency despite unstable networks, devices, and rooms. The capture side takes near-end speech from the microphone array, then passes AEC, noise suppression, AGC, encoding, and network transport. The playback side receives remote packets, then applies a jitter buffer, PLC, decoding, mixing, and speaker playback. AEC needs the far-end reference signal being played by the speaker so it can estimate and cancel the echo picked up again by the microphone. A jitter buffer trades a little buffering for continuous playback, but too much buffering makes calls and captions feel slow."
+            zh: "会议排查要把环境、信号链、症状、可观察指标连起来：个人终端重点看扬声器到麦克风的声学回路，多人会议室还要看距离、方位和混响；AEC 用播放参考抑制回声。弱网中的卡顿和延迟属于传输与播放问题，Jitter Buffer 重排并缓存到达不均的包，PLC 在丢包时补偿短缺音频。实时字幕从增强后语音分出 ASR 旁路，首字和最终结果还受端点检测、推理、翻译与出字策略影响，不应把字幕慢等同于主音频慢。",
+            en: "Meeting troubleshooting connects environment, signal chain, symptom, and observable metric. On personal devices, inspect the acoustic loop from speaker to microphone; in meeting rooms, also inspect distance, direction, and reverberation. AEC uses the render reference to suppress echo. Stalls and delay on poor networks belong to transport and playout: a jitter buffer reorders and holds uneven packets, while PLC conceals short audio gaps after loss. Live captions branch from enhanced speech into an ASR side path, where endpointing, inference, translation, and text stabilization affect first-token and final-result latency; slow captions do not necessarily mean slow main audio."
           },
           lab: {
             type: "meeting-communication",
             title: { zh: "会议与通信实验室", en: "Conferencing and Communication Lab" },
             description: {
-              zh: "用端到端链路图理解上行采集、下行播放、回采参考、网络缓冲和字幕链路如何共同影响会议体验。",
-              en: "Use an end-to-end chain diagram to understand how uplink capture, downlink playback, render reference, network buffering, and captions shape meeting quality."
+              zh: "切换四个实际场景，对照环境、信号链、体验症状、可观察指标和排查顺序。",
+              en: "Switch among four practical scenes and compare environment, signal chain, user symptom, observable metric, and troubleshooting order."
             },
             buttonLabel: { zh: "打开会议与通信实验室", en: "Open conferencing and communication lab" }
           },
           keyConcepts: [
-            { zh: "上行链路关注本端说话是否清楚：麦克风、AEC、NS/ANR、AGC、编码和上行网络共同决定对方听到什么。", en: "The uplink asks whether local speech is clear: microphones, AEC, NS/ANR, AGC, encoding, and upstream network together shape what the far end hears." },
-            { zh: "下行链路关注远端声音是否连续：Jitter Buffer、PLC、解码、混音和扬声器共同决定本端听到什么。", en: "The downlink asks whether remote audio is continuous: jitter buffer, PLC, decoding, mixing, and speaker playback shape what the local user hears." },
-            { zh: "回声消除和双讲处理决定远程会议能否自然打断；AEC 参考信号错位或缺失时，回声会明显变大。", en: "Echo cancellation and double-talk handling determine natural interruption; echo grows when the AEC reference is missing or misaligned." },
-            { zh: "实时字幕和翻译通常走 ASR/翻译链路，受采集质量、端点检测、网络、模型推理和稳定出字策略共同影响。", en: "Live captions and translation usually go through ASR/translation chains and depend on capture quality, endpointing, network, inference, and partial-result stabilization." }
+            { zh: "个人终端出现回声时，先核对声学环境、播放参考和 AEC 指标；多人会议室听不清时，再看拾音距离、阵列方向与混响。", en: "For echo on a personal device, check the acoustic environment, render reference, and AEC metrics first. For poor intelligibility in a meeting room, also inspect pickup distance, array direction, and reverberation." },
+            { zh: "弱网卡顿要沿 RTP 到达、Jitter Buffer、PLC 和播放链路定位，并观察丢包率、抖动、RTT 与缓冲深度。", en: "Trace poor-network stalls through RTP arrival, the jitter buffer, PLC, and playout while observing packet loss, jitter, RTT, and buffer depth." },
+            { zh: "实时字幕是 ASR 识别旁路；应分别观察首字延迟、最终结果延迟和修订次数，不要用字幕延迟代替主音频延迟。", en: "Live captions use an ASR recognition side path. Observe first-token latency, final-result latency, and revisions separately instead of treating caption delay as main-audio delay." },
+            { zh: "同一症状可能来自不同位置：先按场景确认环境，再沿信号链复现症状，用对应指标缩小范围，最后调整模块。", en: "The same symptom can originate at different points: establish the environment, follow the signal chain to reproduce it, narrow the scope with matching metrics, and only then tune a module." }
           ],
           misconception: {
-            zh: "会议音质不是只靠一个好麦克风。房间混响、扬声器回放、回采参考、网络抖动、算法强度、编码策略和平台是否开启字幕/翻译，都会共同决定体验。",
-            en: "Meeting quality does not come from a good microphone alone. Room reverb, speaker playback, render reference, network jitter, processing strength, codec policy, and whether captions or translation are enabled all shape the experience."
+            zh: "不要把回声、卡顿和字幕慢都归因于麦克风或网络：声学问题、网络问题和字幕旁路延迟位于不同链路，必须用各自指标验证。",
+            en: "Do not blame every echo, stall, or slow caption on the microphone or network. Acoustic problems, network problems, and caption side-path delays occur on different chains and require their own metrics."
           },
           contentDirection: {
             zh: "重点用端到端链路图和问题诊断说明“回声大、听不清、字幕慢”分别该看哪些模块，而不是把所有算法孤立介绍。",
