@@ -204,7 +204,7 @@ describe("Audio knowledge app", () => {
     expect(within(modelSection).getByText(/不是 MP3\/AAC 的手工变换编码路线/)).toBeInTheDocument();
   });
 
-  it("expands conferencing and communication with an end-to-end troubleshooting lab", async () => {
+  it("switches conferencing and communication between practical scenarios", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -213,27 +213,57 @@ describe("Audio knowledge app", () => {
     await user.click(screen.getByRole("button", { name: /会议与通信/ }));
 
     const details = screen.getByRole("dialog", { name: "主题详情" });
-    expect(within(details).getByText(/采集端从麦克风阵列拿到近端语音/)).toBeInTheDocument();
-    expect(within(details).getByText(/AEC 需要拿到扬声器播放的远端参考信号/)).toBeInTheDocument();
-    expect(within(details).getByText(/Jitter Buffer 会用少量缓存换取连续播放/)).toBeInTheDocument();
-    expect(within(details).getByRole("button", { name: "打开会议与通信实验室" })).toBeInTheDocument();
+    const openLabButton = within(details).getByRole("button", { name: "打开会议与通信实验室" });
+    expect(details).toBeInTheDocument();
+    expect(openLabButton).toBeInTheDocument();
 
-    await user.click(within(details).getByRole("button", { name: "打开会议与通信实验室" }));
+    await user.click(openLabButton);
 
     const lab = screen.getByRole("main", { name: "会议与通信实验室" });
     expect(within(lab).getByRole("heading", { name: "会议与通信实验室" })).toBeInTheDocument();
-    expect(within(lab).getByRole("img", { name: "会议与通信端到端音频链路图" })).toBeInTheDocument();
-    expect(within(lab).getByText("上行：本端说话送到远端")).toBeInTheDocument();
-    expect(within(lab).getByText("下行：远端声音在本端播放")).toBeInTheDocument();
-    expect(within(lab).getByText("回采参考信号 -> AEC")).toBeInTheDocument();
-    expect(within(lab).getByText("AEC 回声消除")).toBeInTheDocument();
-    expect(within(lab).getAllByText("Jitter Buffer").length).toBeGreaterThanOrEqual(2);
-    expect(within(lab).getByText("PLC 丢包隐藏")).toBeInTheDocument();
-    expect(within(lab).getByRole("heading", { name: "典型问题诊断" })).toBeInTheDocument();
-    expect(within(lab).getByText("回声大")).toBeInTheDocument();
-    expect(within(lab).getByText("听不清")).toBeInTheDocument();
-    expect(within(lab).getByText("字幕慢")).toBeInTheDocument();
-    expect(within(lab).getByText(/先看回采参考是否正确进入 AEC/)).toBeInTheDocument();
+    const personalDevice = within(lab).getByRole("button", { name: "个人终端" });
+    const meetingRoom = within(lab).getByRole("button", { name: "多人会议室" });
+    const poorNetwork = within(lab).getByRole("button", { name: "弱网会议" });
+    const liveCaptions = within(lab).getByRole("button", { name: "实时字幕" });
+
+    expect(personalDevice).toHaveAttribute("aria-pressed", "true");
+    expect(within(lab).getByRole("img", { name: "个人终端会议场景图" })).toBeInTheDocument();
+    expect(within(lab).getByText("ERLE")).toBeInTheDocument();
+
+    await user.click(meetingRoom);
+    expect(within(lab).getByRole("img", { name: "多人会议室场景图" })).toBeInTheDocument();
+    expect(within(lab).getByText("麦克风阵列")).toBeInTheDocument();
+    expect(within(lab).queryByText("耳机模式")).not.toBeInTheDocument();
+
+    await user.click(poorNetwork);
+    expect(within(lab).getByRole("img", { name: "弱网会议场景图" })).toBeInTheDocument();
+    expect(within(lab).getByText("Jitter Buffer")).toBeInTheDocument();
+    expect(within(lab).getByText("PLC")).toBeInTheDocument();
+    expect(within(lab).getByText("丢包率")).toBeInTheDocument();
+
+    await user.click(liveCaptions);
+    expect(within(lab).getByRole("img", { name: "实时字幕会议场景图" })).toBeInTheDocument();
+    expect(within(lab).getByText("流式 ASR")).toBeInTheDocument();
+    expect(within(lab).getByText("首字延迟")).toBeInTheDocument();
+  });
+
+  it("labels conferencing and communication scenarios in English", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "English" }));
+    const categoriesRegion = screen.getByRole("region", { name: "Knowledge Areas" });
+    await user.click(within(categoriesRegion).getByRole("button", { name: /Applications/ }));
+    await user.click(screen.getByRole("button", { name: /Conferencing and Communication/ }));
+
+    const details = screen.getByRole("dialog", { name: "Topic details" });
+    await user.click(within(details).getByRole("button", { name: "Open conferencing and communication lab" }));
+
+    const lab = screen.getByRole("main", { name: "Conferencing and Communication Lab" });
+    expect(within(lab).getByRole("button", { name: "Personal device" })).toBeInTheDocument();
+    expect(within(lab).getByRole("button", { name: "Meeting room" })).toBeInTheDocument();
+    expect(within(lab).getByRole("button", { name: "Poor network" })).toBeInTheDocument();
+    expect(within(lab).getByRole("button", { name: "Live captions" })).toBeInTheDocument();
   });
 
   it("expands in-car acoustics with cabin component layout and acoustic processing lab", async () => {
