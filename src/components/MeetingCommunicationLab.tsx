@@ -105,17 +105,18 @@ const scenarioIds = Object.keys(scenarios) as ScenarioId[];
 type SceneFrameProps = {
   name: string;
   description: string;
+  scrollRegionLabel: string;
   arrowId: string;
   riskArrowId: string;
   children: React.ReactNode;
 };
 
-function SceneFrame({ name, description, arrowId, riskArrowId, children }: SceneFrameProps) {
+function SceneFrame({ name, description, scrollRegionLabel, arrowId, riskArrowId, children }: SceneFrameProps) {
   const accessibleId = useId().replace(/:/g, "");
   const titleId = `${accessibleId}-title`;
   const descriptionId = `${accessibleId}-description`;
   return (
-    <figure className="meeting-scene-figure">
+    <figure aria-label={scrollRegionLabel} className="meeting-scene-figure" role="region">
       <svg aria-labelledby={titleId} aria-describedby={descriptionId} role="img" viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg">
         <title id={titleId}>{name}</title>
         <desc id={descriptionId}>{description}</desc>
@@ -135,7 +136,12 @@ function ScenarioScene({ id, language }: { id: ScenarioId; language: Language })
   const markerId = useId().replace(/:/g, "");
   const arrowId = `${markerId}-arrow`;
   const riskArrowId = `${markerId}-risk-arrow`;
-  const frameProps = { description: scenarios[id].sceneDescription[language], arrowId, riskArrowId };
+  const frameProps = {
+    description: scenarios[id].sceneDescription[language],
+    scrollRegionLabel: zh ? "会议场景图滚动区域" : "Meeting scene diagram scroll region",
+    arrowId,
+    riskArrowId
+  };
   if (id === "personal") return (
     <SceneFrame {...frameProps} name={zh ? "个人终端会议场景图" : "Personal device meeting scene diagram"}>
       <text className="meeting-diagram-title" x="44" y="48">{zh ? "内置扬声器与麦克风形成声学回路" : "Built-in speaker and microphone form an acoustic loop"}</text>

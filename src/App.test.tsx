@@ -234,6 +234,7 @@ describe("Audio knowledge app", () => {
     expect(meetingRoom).toHaveAttribute("aria-pressed", "false");
     expect(poorNetwork).toHaveAttribute("aria-pressed", "false");
     expect(liveCaptions).toHaveAttribute("aria-pressed", "false");
+    expect(within(lab).getByRole("region", { name: "会议场景图滚动区域" })).toBeInTheDocument();
     const personalScene = within(lab).getByRole("img", { name: "个人终端会议场景图" });
     expect(personalScene).toBeInTheDocument();
     expect(personalScene).toHaveAccessibleDescription(/播放参考信号进入 AEC/);
