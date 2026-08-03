@@ -256,6 +256,7 @@ describe("Audio knowledge app", () => {
     expect(within(lab).getByText("丢包率")).toBeInTheDocument();
     expect(within(lab).getByText("自适应码率")).toBeInTheDocument();
     expect(within(lab).getByText("RTT")).toBeInTheDocument();
+    expect(within(lab).getByText("播放缓冲深度")).toBeInTheDocument();
 
     await user.click(liveCaptions);
     expect(liveCaptions).toHaveAttribute("aria-pressed", "true");

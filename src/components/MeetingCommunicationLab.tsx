@@ -66,7 +66,7 @@ const scenarios: Record<ScenarioId, Scenario> = {
     expected: t("短时抖动和单个丢包不会造成明显停顿，播放延迟保持可控。", "Brief jitter and an isolated missing packet do not cause obvious gaps, while playout delay stays controlled."),
     risk: t("包间隔不均或连续丢包会造成缓冲欠载、卡顿和延迟累积。", "Uneven packet spacing or burst loss can cause buffer underruns, dropouts, and accumulated latency."),
     modules: [t("Opus", "Opus"), t("RTP", "RTP"), t("FEC", "FEC"), t("Jitter Buffer", "Jitter Buffer"), t("PLC", "PLC"), t("自适应码率", "Adaptive bitrate")],
-    metrics: [t("丢包率", "Packet loss rate"), t("到达抖动", "Arrival jitter"), t("RTT", "RTT"), t("PLC 触发率", "PLC trigger rate")],
+    metrics: [t("丢包率", "Packet loss rate"), t("到达抖动", "Arrival jitter"), t("RTT", "RTT"), t("PLC 触发率", "PLC trigger rate"), t("播放缓冲深度", "Playout buffer depth")],
     checks: [t("先对比原始采集，区分采集异常与网络损伤。", "First compare raw capture to distinguish capture faults from network damage."), t("检查丢包、RTT、抖动与 PLC 触发。", "Check loss, RTT, jitter, and PLC triggers."), t("最后调整缓冲、FEC 和码率。", "Finally tune buffering, FEC, and bitrate.")],
     chain: [
       { kind: "capture", label: t("本地端点", "Local endpoint") },
